@@ -17,4 +17,5 @@ async def match_job_description(
     matching_service: MatchingService = request.app.state.matching_service
     return await matching_service.match_job_description(
         job_description=payload.job_description,
+        top_n=payload.top_n,
     )

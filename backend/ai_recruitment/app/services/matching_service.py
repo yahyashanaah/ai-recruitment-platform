@@ -31,27 +31,28 @@ class MatchingService:
         self._retrieval_k = retrieval_k
         self._jd_parser = jd_parser_model.with_structured_output(JDExtractionSchema)
 
-    async def match_job_description(self, job_description: str) -> MatchJDResponse:
+    async def match_job_description(self, job_description: str, top_n: int = 3) -> MatchJDResponse:
         parsed_jd = await self._parse_job_description(job_description)
 
         docs = self._vector_store.similarity_search(
             query=job_description,
             k=self._retrieval_k,
         )
-        ranked_candidate_ids = self._rank_candidates_from_docs(docs)[:10]
+        candidate_pool_size = max(10, min(60, top_n * 4))
+        ranked_candidate_ids = self._rank_candidates_from_docs(docs)[:candidate_pool_size]
 
         if ranked_candidate_ids:
             candidate_rows = self._candidate_repository.get_candidates_by_ids(
                 candidate_ids=ranked_candidate_ids,
             )
         else:
-            candidate_rows = self._candidate_repository.get_all_candidates()[:10]
+            candidate_rows = self._candidate_repository.get_all_candidates()[:candidate_pool_size]
 
         candidate_profiles = [self._to_profile_response(row) for row in candidate_rows]
         scored = [self._scoring_service.score_candidate(profile, parsed_jd) for profile in candidate_profiles]
         scored.sort(key=lambda item: item.overall_score, reverse=True)
 
-        return MatchJDResponse(parsed_jd=parsed_jd, top_candidates=scored[:3])
+        return MatchJDResponse(parsed_jd=parsed_jd, top_candidates=scored[:top_n])
 
     async def _parse_job_description(self, job_description: str) -> JDExtractionSchema:
         prompt = build_jd_prompt(job_description=job_description)

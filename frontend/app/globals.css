@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-body: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --background: 34 100% 98%;
+  --foreground: 24 32% 13%;
+  --card: 0 0% 100%;
+  --card-foreground: 24 32% 13%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 24 32% 13%;
+  --primary: 24 94% 53%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 30 100% 95%;
+  --secondary-foreground: 24 32% 13%;
+  --muted: 32 100% 96%;
+  --muted-foreground: 24 13% 40%;
+  --accent: 30 100% 92%;
+  --accent-foreground: 24 32% 13%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 50% 88%;
+  --input: 30 50% 88%;
+  --ring: 24 94% 53%;
+  --chart-1: 24 94% 53%;
+  --chart-2: 33 100% 58%;
+  --chart-3: 16 72% 45%;
+  --chart-4: 43 96% 56%;
+  --chart-5: 12 76% 61%;
+  --radius: 0.8rem;
+}
+
+* {
+  @apply border-border;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  @apply text-foreground antialiased;
+  font-family: var(--font-body);
+  background-color: #fffaf5;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading), sans-serif;
+}
+
+::selection {
+  background-color: rgba(249, 115, 22, 0.24);
+}

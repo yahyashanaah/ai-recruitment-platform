@@ -81,6 +81,7 @@ class MatchJDRequest(BaseModel):
     """Request body for job description matching."""
 
     job_description: str = Field(min_length=1, max_length=16000)
+    top_n: int = Field(default=3, ge=1, le=20)
 
 
 class ScoreBreakdown(BaseModel):
