@@ -28,6 +28,40 @@ class JDExtractionSchema(BaseModel):
     education_required: str = ""
 
 
+class SalarySuggestion(BaseModel):
+    """Optional market-informed salary range for a generated JD."""
+
+    currency: str = "USD"
+    min_amount: int | None = None
+    max_amount: int | None = None
+    period: str = "year"
+    rationale: str = ""
+
+
+class SmartJDRequest(BaseModel):
+    """Request body for generating a recruiter-ready JD from a short brief."""
+
+    role_brief: str = Field(min_length=3, max_length=4000)
+    include_salary_suggestion: bool = True
+
+
+class SmartJDResponse(BaseModel):
+    """Structured, matching-optimized job description."""
+
+    title: str = ""
+    seniority: str = ""
+    employment_type: str = ""
+    role_summary: str = ""
+    responsibilities: list[str] = Field(default_factory=list)
+    required_skills: list[str] = Field(default_factory=list)
+    preferred_skills: list[str] = Field(default_factory=list)
+    matching_keywords: list[str] = Field(default_factory=list)
+    min_experience: float = 0
+    education_required: str = ""
+    optimized_job_description: str = ""
+    salary_suggestion: SalarySuggestion | None = None
+
+
 class CandidateProfileResponse(BaseModel):
     """API response model for structured candidate profile."""
 
@@ -93,6 +127,14 @@ class ScoreBreakdown(BaseModel):
     certifications_score: float
 
 
+class SkillOverlapBreakdown(BaseModel):
+    """Structured overlap details between JD requirements and candidate skills."""
+
+    matched_required_skills: int
+    total_required_skills: int
+    overlap_percentage: float
+
+
 class CandidateMatchResponse(BaseModel):
     """Top candidate record returned by JD matching API."""
 
@@ -103,6 +145,7 @@ class CandidateMatchResponse(BaseModel):
     years_of_experience: float
     skills_match: list[str]
     missing_skills: list[str]
+    skill_overlap: SkillOverlapBreakdown
     education: str
     overall_score: float
     reasoning: str

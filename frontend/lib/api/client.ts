@@ -7,6 +7,8 @@ import type {
   HealthResponse,
   MatchJDRequest,
   MatchResponse,
+  SmartJDRequest,
+  SmartJDResponse,
   UploadResponse
 } from "@/lib/api/types";
 
@@ -62,6 +64,16 @@ export async function matchJobDescription(payload: MatchJDRequest) {
   });
 
   return parseJSON<MatchResponse>(response);
+}
+
+export async function generateSmartJobDescription(payload: SmartJDRequest) {
+  const response = await fetch(buildUrl("/api/v1/jd/generate"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  return parseJSON<SmartJDResponse>(response);
 }
 
 export async function listCandidates() {

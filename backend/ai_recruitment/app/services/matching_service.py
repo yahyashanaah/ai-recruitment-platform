@@ -8,8 +8,9 @@ from app.models.schemas import (
     CandidateProfileResponse,
     JDExtractionSchema,
     MatchJDResponse,
+    SmartJDResponse,
 )
-from app.prompts.jd_prompt import build_jd_prompt
+from app.prompts.jd_prompt import build_jd_prompt, build_smart_jd_prompt
 from app.services.scoring_service import ScoringService
 from app.vectorstore.base import BaseVectorStore
 
@@ -30,6 +31,7 @@ class MatchingService:
         self._scoring_service = scoring_service
         self._retrieval_k = retrieval_k
         self._jd_parser = jd_parser_model.with_structured_output(JDExtractionSchema)
+        self._jd_generator = jd_parser_model.with_structured_output(SmartJDResponse)
 
     async def match_job_description(self, job_description: str, top_n: int = 3) -> MatchJDResponse:
         parsed_jd = await self._parse_job_description(job_description)
@@ -53,6 +55,17 @@ class MatchingService:
         scored.sort(key=lambda item: item.overall_score, reverse=True)
 
         return MatchJDResponse(parsed_jd=parsed_jd, top_candidates=scored[:top_n])
+
+    async def generate_smart_job_description(
+        self,
+        role_brief: str,
+        include_salary_suggestion: bool = True,
+    ) -> SmartJDResponse:
+        prompt = build_smart_jd_prompt(
+            role_brief=role_brief,
+            include_salary_suggestion=include_salary_suggestion,
+        )
+        return await self._jd_generator.ainvoke(prompt)
 
     async def _parse_job_description(self, job_description: str) -> JDExtractionSchema:
         prompt = build_jd_prompt(job_description=job_description)

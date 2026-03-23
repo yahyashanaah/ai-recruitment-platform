@@ -5,6 +5,7 @@ from app.models.schemas import (
     CandidateProfileResponse,
     JDExtractionSchema,
     ScoreBreakdown,
+    SkillOverlapBreakdown,
 )
 
 
@@ -31,6 +32,12 @@ class ScoringService:
             skills_score = (len(matched_skills) / len(required_skills)) * 100
         else:
             skills_score = 100
+
+        skill_overlap = SkillOverlapBreakdown(
+            matched_required_skills=len(matched_skills),
+            total_required_skills=len(required_skills),
+            overlap_percentage=round(skills_score, 2),
+        )
 
         experience_score = self._experience_score(
             years=candidate.years_of_experience,
@@ -78,6 +85,7 @@ class ScoringService:
             years_of_experience=candidate.years_of_experience,
             skills_match=matched_skills,
             missing_skills=missing_skills,
+            skill_overlap=skill_overlap,
             education=candidate.education,
             overall_score=round(overall_score, 2),
             reasoning=reasoning,
@@ -133,34 +141,36 @@ class ScoringService:
         education_score: float,
         certifications_score: float,
     ) -> str:
-        skill_summary = (
-            f"Matched {len(matched_skills)} required skill(s)"
-            if matched_skills
-            else "No required skills matched"
-        )
+        strengths: list[str] = []
+        gaps: list[str] = []
 
-        missing_summary = (
-            f"Missing: {', '.join(missing_skills[:5])}."
-            if missing_skills
-            else "No major skill gaps identified."
-        )
+        if matched_skills:
+            strengths.append(f"Strong {', '.join(matched_skills[:3])} experience")
+        else:
+            gaps.append("no core required skills matched")
 
-        experience_summary = (
-            f"Experience: {candidate_years} years vs required {min_years} years."
-            if min_years > 0
-            else f"Experience: {candidate_years} years."
-        )
+        if min_years > 0:
+            if candidate_years >= min_years:
+                strengths.append(f"meets the experience target with {candidate_years:g} years")
+            else:
+                gaps.append(f"experience below the {min_years:g}-year target")
+        elif candidate_years > 0:
+            strengths.append(f"brings {candidate_years:g} years of experience")
 
-        education_summary = (
-            "Education aligns with requirement."
-            if education_score >= 100
-            else "Education requirement may not fully align."
-        )
+        if education_score >= 100:
+            strengths.append("education aligns with the role")
+        else:
+            gaps.append("education alignment is unclear")
 
-        cert_summary = (
-            "Strong certification relevance."
-            if certifications_score >= 80
-            else "Limited certification alignment."
-        )
+        if certifications_score >= 80:
+            strengths.append("certifications are relevant")
+        elif certifications_score <= 20:
+            gaps.append("certification relevance is limited")
 
-        return f"{skill_summary}. {missing_summary} {experience_summary} {education_summary} {cert_summary}"
+        if missing_skills:
+            gaps.append(f"lacks {', '.join(missing_skills[:3])}")
+
+        strong_part = ", ".join(strengths[:3]) if strengths else "Profile fit is mixed"
+        gap_part = ", ".join(gaps[:2]) if gaps else "with no major skill gaps"
+
+        return f"{strong_part}, {gap_part}."

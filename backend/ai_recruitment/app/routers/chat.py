@@ -12,7 +12,16 @@ from app.services.streaming_service import StreamingService
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
-@router.post("/ask")
+@router.post(
+    "/ask",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "description": "Server-Sent Events stream of answer tokens and completion metadata.",
+            "content": {"text/event-stream": {}},
+        }
+    },
+)
 async def ask_question(
     payload: ChatAskRequest,
     request: Request,

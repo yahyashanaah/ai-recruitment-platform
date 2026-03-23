@@ -40,11 +40,22 @@ export interface MatchJDRequest {
   top_n?: number;
 }
 
+export interface SmartJDRequest {
+  role_brief: string;
+  include_salary_suggestion?: boolean;
+}
+
 export interface ScoreBreakdown {
   skills_score: number;
   experience_score: number;
   education_score: number;
   certifications_score: number;
+}
+
+export interface SkillOverlapBreakdown {
+  matched_required_skills: number;
+  total_required_skills: number;
+  overlap_percentage: number;
 }
 
 export interface MatchCandidate {
@@ -55,6 +66,7 @@ export interface MatchCandidate {
   years_of_experience: number;
   skills_match: string[];
   missing_skills: string[];
+  skill_overlap: SkillOverlapBreakdown;
   education: string;
   overall_score: number;
   reasoning: string;
@@ -68,6 +80,29 @@ export interface ParsedJD {
   nice_to_have_skills: string[];
   min_experience: number;
   education_required: string;
+}
+
+export interface SalarySuggestion {
+  currency: string;
+  min_amount: number | null;
+  max_amount: number | null;
+  period: string;
+  rationale: string;
+}
+
+export interface SmartJDResponse {
+  title: string;
+  seniority: string;
+  employment_type: string;
+  role_summary: string;
+  responsibilities: string[];
+  required_skills: string[];
+  preferred_skills: string[];
+  matching_keywords: string[];
+  min_experience: number;
+  education_required: string;
+  optimized_job_description: string;
+  salary_suggestion: SalarySuggestion | null;
 }
 
 export interface MatchResponse {

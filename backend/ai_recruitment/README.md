@@ -67,13 +67,22 @@ Base path: `/api/v1`
 3. `POST /match-jd`
 - Returns parsed JD and top 3 candidates with weighted score breakdown
 
-4. `GET /candidates`
+4. `POST /jd/generate`
+- Accepts a short hiring brief such as `Backend engineer for fintech startup`
+- Returns a structured JD with:
+  - required skills
+  - preferred skills
+  - matching keywords
+  - optimized JD copy for better matching
+  - optional salary suggestion
+
+5. `GET /candidates`
 - Returns all structured candidate profiles
 
-5. `DELETE /candidates/{candidate_id}`
+6. `DELETE /candidates/{candidate_id}`
 - Deletes from SQLite and FAISS
 
-6. `DELETE /documents/file/{file_name}`
+7. `DELETE /documents/file/{file_name}`
 - Deletes all candidates and vectors associated with the uploaded file name
 
 ## Quick cURL upload
