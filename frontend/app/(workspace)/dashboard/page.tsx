@@ -136,7 +136,7 @@ export default function DashboardPage() {
               return (
                 <Card key={stat.label}>
                   <CardContent className="space-y-5 p-6">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 pt-3">
                       <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary">
                         <Icon className="h-5 w-5" />
                       </div>

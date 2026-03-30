@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { SectionToolbar } from "@/components/common/section-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,16 +128,20 @@ export default function CandidatesPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Badge variant="outline">{filteredCandidates.length} candidates</Badge>
-              <Badge variant="secondary">{selectedIds.length} selected</Badge>
-            </div>
-            <Button variant="destructive" onClick={runBulkDelete} disabled={selectedIds.length === 0}>
-              <Trash2 className="h-4 w-4" />
-              Bulk delete
-            </Button>
-          </div>
+          <SectionToolbar
+            left={
+              <>
+                <Badge variant="outline">{filteredCandidates.length} candidates</Badge>
+                <Badge variant="secondary">{selectedIds.length} selected</Badge>
+              </>
+            }
+            right={
+              <Button variant="destructive" onClick={runBulkDelete} disabled={selectedIds.length === 0}>
+                <Trash2 className="h-4 w-4" />
+                Bulk delete
+              </Button>
+            }
+          />
 
           <Card>
             <CardHeader>

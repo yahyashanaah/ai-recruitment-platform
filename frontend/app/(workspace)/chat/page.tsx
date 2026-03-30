@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { BotMessageSquare, DatabaseZap, Plus, SendHorizontal, Sparkles } from "lucide-react";
+import { KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { BotMessageSquare, Plus, SendHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { streamChatAnswer } from "@/lib/api/client";
 import { incrementStoredNumber } from "@/lib/storage";
@@ -44,7 +45,7 @@ export default function ChatPage() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [systemStatus, setSystemStatus] = useState("Idle");
+  const [systemStatus, setSystemStatus] = useState("Ready");
 
   useEffect(() => {
     const raw = window.localStorage.getItem("tc_chat_conversations");
@@ -77,8 +78,25 @@ export default function ChatPage() {
     return assistantWithSources?.sources ?? [];
   }, [activeConversation]);
 
-  const patchConversation = (conversationId: string, updater: (conversation: Conversation) => Conversation) => {
-    setConversations((current) => current.map((conversation) => (conversation.id === conversationId ? updater(conversation) : conversation)));
+  const patchConversation = (
+    conversationId: string,
+    updater: (conversation: Conversation) => Conversation
+  ) => {
+    setConversations((current) => {
+      const existing = current.find((conversation) => conversation.id === conversationId);
+      if (!existing) {
+        return current;
+      }
+
+      const updated = updater(existing);
+      return [updated, ...current.filter((conversation) => conversation.id !== conversationId)];
+    });
+  };
+
+  const resetChat = () => {
+    setActiveConversationId(null);
+    setPrompt("");
+    setSystemStatus("Ready");
   };
 
   const sendMessage = async (messageText?: string) => {
@@ -106,21 +124,19 @@ export default function ChatPage() {
         ];
       }
 
-      return current.map((conversation) =>
-        conversation.id === conversationId
-          ? {
-              ...conversation,
-              title: conversation.title || content,
-              updatedAt: new Date().toISOString(),
-              messages: [...conversation.messages, userMessage, assistantMessage]
-            }
-          : conversation
-      );
+      const updatedConversation: Conversation = {
+        ...existing,
+        title: existing.title || content,
+        updatedAt: new Date().toISOString(),
+        messages: [...existing.messages, userMessage, assistantMessage]
+      };
+
+      return [updatedConversation, ...current.filter((item) => item.id !== conversationId)];
     });
 
     setPrompt("");
     setLoading(true);
-    setSystemStatus("Searching candidate knowledge base...");
+    setSystemStatus("Searching documents...");
 
     try {
       incrementStoredNumber("tc_chat_queries_used");
@@ -132,9 +148,12 @@ export default function ChatPage() {
               ...conversation,
               updatedAt: new Date().toISOString(),
               messages: conversation.messages.map((message) =>
-                message.id === assistantMessage.id ? { ...message, content: `${message.content}${token}` } : message
+                message.id === assistantMessage.id
+                  ? { ...message, content: `${message.content}${token}` }
+                  : message
               )
             }));
+            setSystemStatus("Generating answer...");
           },
           onSources: (sources) => {
             patchConversation(conversationId, (conversation) => ({
@@ -145,35 +164,48 @@ export default function ChatPage() {
             }));
           },
           onDone: () => {
-            setSystemStatus("Answer ready");
+            setSystemStatus("Ready");
           },
           onError: (message) => {
+            setSystemStatus("Error");
             toast.error(message);
             patchConversation(conversationId, (conversation) => ({
               ...conversation,
               messages: conversation.messages.map((item) =>
-                item.id === assistantMessage.id && !item.content ? { ...item, content: message } : item
+                item.id === assistantMessage.id && !item.content
+                  ? { ...item, content: message }
+                  : item
               )
             }));
           }
         }
       );
     } catch (error) {
+      setSystemStatus("Error");
       toast.error(error instanceof Error ? error.message : "Unable to stream answer");
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+    void sendMessage();
+  };
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+    <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
       <div className="space-y-6">
         <PageHeader
-          eyebrow="AI Chat"
-          title="Ask TalentCore anything about your candidates"
-          description="Premium recruiter chat over your indexed candidate knowledge base with grounded responses and visible source attribution."
+          className="mt-0"
+          title="AI chat"
+          description="Ask direct questions about uploaded candidates and receive streamed answers from the indexed document base."
           action={
-            <Button variant="secondary" onClick={() => setActiveConversationId(null)}>
+            <Button variant="secondary" onClick={resetChat}>
               <Plus className="h-4 w-4" />
               New chat
             </Button>
@@ -182,32 +214,42 @@ export default function ChatPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Conversation history</CardTitle>
-            <CardDescription>Persisted locally for this browser session.</CardDescription>
+            <CardTitle>Conversations</CardTitle>
+            <CardDescription>Saved in this browser session.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-0">
             {conversations.length === 0 ? (
-              <EmptyState
-                icon={BotMessageSquare}
-                title="No conversations yet"
-                description="Send your first question to start building recruiter conversation history."
-              />
+              <div className="px-6 pb-6">
+                <EmptyState
+                  icon={BotMessageSquare}
+                  title="No conversations"
+                  description="Start a question to create your first chat thread."
+                />
+              </div>
             ) : (
-              conversations.map((conversation) => (
-                <button
-                  key={conversation.id}
-                  type="button"
-                  onClick={() => setActiveConversationId(conversation.id)}
-                  className={`w-full rounded-[22px] border p-4 text-left transition ${
-                    activeConversationId === conversation.id
-                      ? "border-primary/45 bg-primary/10"
-                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
-                  }`}
-                >
-                  <p className="line-clamp-1 font-medium text-white">{conversation.title}</p>
-                  <p className="mt-1 text-xs text-white/42">{formatDate(conversation.updatedAt)}</p>
-                </button>
-              ))
+              <ScrollArea className="h-[640px]">
+                <div className="space-y-2 p-4">
+                  {conversations.map((conversation) => (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => setActiveConversationId(conversation.id)}
+                      className={`w-full rounded-[20px] border p-4 text-left transition ${
+                        activeConversationId === conversation.id
+                          ? "border-primary/45 bg-primary/10"
+                          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
+                      }`}
+                    >
+                      <p className="line-clamp-1 text-sm font-medium text-white">
+                        {conversation.title}
+                      </p>
+                      <p className="mt-1 text-xs text-white/42">
+                        {formatDate(conversation.updatedAt)}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
             )}
           </CardContent>
         </Card>
@@ -217,99 +259,99 @@ export default function ChatPage() {
         <CardHeader className="border-b border-white/6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle>Candidate intelligence assistant</CardTitle>
-              <CardDescription>Streamed SSE responses grounded in uploaded candidate documents.</CardDescription>
+              <CardTitle>Candidate knowledge chat</CardTitle>
+              <CardDescription>Streamed answers grounded in uploaded CV documents.</CardDescription>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">Model: GPT-4o</Badge>
-              <Badge variant="teal">Embeddings: MiniLM</Badge>
-            </div>
+            <Badge
+              variant={loading ? "teal" : systemStatus === "Error" ? "warning" : "outline"}
+              className="normal-case tracking-normal"
+            >
+              {systemStatus}
+            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="flex h-full flex-col gap-4 p-6">
-          <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-            {!activeConversation || activeConversation.messages.length === 0 ? (
-              <EmptyState
-                icon={DatabaseZap}
-                title="Search your candidate knowledge base"
-                description="Ask direct recruiter questions or start from one of the guided prompts below."
-              />
-            ) : (
-              activeConversation.messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[85%] rounded-[24px] px-4 py-3 text-sm leading-7 ${
-                      message.role === "user"
-                        ? "bg-[linear-gradient(135deg,rgba(108,99,255,0.92),rgba(80,72,255,0.8))] text-white"
-                        : "border border-white/10 bg-white/[0.04] text-white/80"
-                    }`}
-                  >
-                    {message.content || (loading && message.role === "assistant" ? "Thinking..." : "")}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
 
-          <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm text-white/50">
-              <Sparkles className="h-4 w-4 text-[#00D4AA]" />
-              {systemStatus}
+        <CardContent className="flex h-full flex-col p-0">
+          <ScrollArea className="h-[500px]">
+            <div className="space-y-4 p-6">
+              {!activeConversation || activeConversation.messages.length === 0 ? (
+                <EmptyState
+                  icon={BotMessageSquare}
+                  title="Start a conversation"
+                  description="Ask a question about candidate skills, experience, or role fit."
+                />
+              ) : (
+                activeConversation.messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-[20px] px-4 py-3 text-sm leading-7 ${
+                        message.role === "user"
+                          ? "bg-primary text-white"
+                          : "border border-white/10 bg-white/[0.04] text-white/78"
+                      }`}
+                    >
+                      {message.content || (loading && message.role === "assistant" ? "Thinking..." : "")}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
+          </ScrollArea>
+
+          <div className="border-t border-white/6 p-6">
             <div className="mb-4 flex flex-wrap gap-2">
               {examplePrompts.map((example) => (
                 <button
                   key={example}
                   type="button"
                   onClick={() => sendMessage(example)}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 transition hover:border-primary/35 hover:text-white"
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/68 transition hover:border-primary/35 hover:text-white"
                 >
                   {example}
                 </button>
               ))}
             </div>
-            <div className="flex gap-3">
+
+            <div className="space-y-3">
               <Textarea
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
+                onKeyDown={handlePromptKeyDown}
                 placeholder="Ask about candidate experience, skills, or fit..."
-                className="min-h-24"
+                className="min-h-[120px]"
               />
-              <Button onClick={() => sendMessage()} disabled={loading || !prompt.trim()} className="self-end">
-                <SendHorizontal className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-white/45">
+                  Answers are generated from uploaded candidate documents.
+                </p>
+                <Button onClick={() => sendMessage()} disabled={loading || !prompt.trim()}>
+                  <SendHorizontal className="h-4 w-4" />
+                  Send
+                </Button>
+              </div>
             </div>
+
+            {latestSources.length > 0 && (
+              <div className="mt-5 border-t border-white/6 pt-5">
+                <p className="text-sm font-medium text-white">Sources</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {latestSources.map((source, index) => (
+                    <div
+                      key={`${source.file_name}-${index}`}
+                      className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/68"
+                    >
+                      {source.candidate_name} • {source.file_name} • page {source.page_number}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Retrieved sources</CardTitle>
-            <CardDescription>CV chunks used to answer the current assistant response.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {latestSources.length === 0 ? (
-              <EmptyState
-                icon={DatabaseZap}
-                title="No sources yet"
-                description="Run a query and TalentCore will show which candidate documents were retrieved."
-              />
-            ) : (
-              <div className="space-y-3">
-                {latestSources.map((source, index) => (
-                  <div key={`${source.file_name}-${index}`} className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4 text-sm">
-                    <p className="font-medium text-white">{source.candidate_name}</p>
-                    <p className="mt-1 text-white/48">{source.file_name}</p>
-                    <Badge variant="outline" className="mt-3">Page {source.page_number}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
