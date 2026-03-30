@@ -42,6 +42,9 @@ class SmartJDRequest(BaseModel):
     """Request body for generating a recruiter-ready JD from a short brief."""
 
     role_brief: str = Field(min_length=3, max_length=4000)
+    seniority: str = ""
+    industry: str = ""
+    work_model: str = ""
     include_salary_suggestion: bool = True
 
 
@@ -50,6 +53,8 @@ class SmartJDResponse(BaseModel):
 
     title: str = ""
     seniority: str = ""
+    industry: str = ""
+    work_model: str = ""
     employment_type: str = ""
     role_summary: str = ""
     responsibilities: list[str] = Field(default_factory=list)

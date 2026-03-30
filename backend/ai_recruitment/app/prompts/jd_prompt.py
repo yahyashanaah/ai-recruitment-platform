@@ -63,6 +63,15 @@ Rules:
 HIRING BRIEF:
 {role_brief}
 
+SENIORITY:
+{seniority}
+
+INDUSTRY:
+{industry}
+
+WORK MODEL:
+{work_model}
+
 INCLUDE SALARY SUGGESTION:
 {include_salary_suggestion}
 """.strip()
@@ -73,9 +82,18 @@ def build_jd_prompt(job_description: str) -> str:
     return JD_PROMPT.format(job_description=job_description[:24000])
 
 
-def build_smart_jd_prompt(role_brief: str, include_salary_suggestion: bool) -> str:
+def build_smart_jd_prompt(
+    role_brief: str,
+    seniority: str,
+    industry: str,
+    work_model: str,
+    include_salary_suggestion: bool,
+) -> str:
     """Render smart JD generation prompt with bounded payload."""
     return SMART_JD_PROMPT.format(
         role_brief=role_brief[:4000],
+        seniority=seniority[:120] if seniority else "Not specified",
+        industry=industry[:120] if industry else "Not specified",
+        work_model=work_model[:120] if work_model else "Not specified",
         include_salary_suggestion="true" if include_salary_suggestion else "false",
     )

@@ -59,10 +59,16 @@ class MatchingService:
     async def generate_smart_job_description(
         self,
         role_brief: str,
+        seniority: str = "",
+        industry: str = "",
+        work_model: str = "",
         include_salary_suggestion: bool = True,
     ) -> SmartJDResponse:
         prompt = build_smart_jd_prompt(
             role_brief=role_brief,
+            seniority=seniority,
+            industry=industry,
+            work_model=work_model,
             include_salary_suggestion=include_salary_suggestion,
         )
         return await self._jd_generator.ainvoke(prompt)

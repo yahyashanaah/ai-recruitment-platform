@@ -30,5 +30,8 @@ async def generate_smart_job_description(
     matching_service: MatchingService = request.app.state.matching_service
     return await matching_service.generate_smart_job_description(
         role_brief=payload.role_brief,
+        seniority=payload.seniority,
+        industry=payload.industry,
+        work_model=payload.work_model,
         include_salary_suggestion=payload.include_salary_suggestion,
     )

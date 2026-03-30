@@ -42,6 +42,9 @@ export interface MatchJDRequest {
 
 export interface SmartJDRequest {
   role_brief: string;
+  seniority?: string;
+  industry?: string;
+  work_model?: string;
   include_salary_suggestion?: boolean;
 }
 
@@ -93,6 +96,8 @@ export interface SalarySuggestion {
 export interface SmartJDResponse {
   title: string;
   seniority: string;
+  industry: string;
+  work_model: string;
   employment_type: string;
   role_summary: string;
   responsibilities: string[];
@@ -113,6 +118,12 @@ export interface MatchResponse {
 export interface DeleteCandidateResponse {
   candidate_id: string;
   deleted_from_sqlite: boolean;
+  deleted_vectors: number;
+}
+
+export interface DeleteFileResponse {
+  file_name: string;
+  deleted_candidates: number;
   deleted_vectors: number;
 }
 

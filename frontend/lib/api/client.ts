@@ -4,6 +4,7 @@ import type {
   ChatSource,
   ChatStreamHandlers,
   DeleteCandidateResponse,
+  DeleteFileResponse,
   HealthResponse,
   MatchJDRequest,
   MatchResponse,
@@ -87,6 +88,15 @@ export async function deleteCandidate(candidateId: string) {
   });
 
   return parseJSON<DeleteCandidateResponse>(response);
+}
+
+export async function deleteDocumentFile(fileName: string) {
+  const encoded = encodeURIComponent(fileName);
+  const response = await fetch(buildUrl(`/api/v1/documents/file/${encoded}`), {
+    method: "DELETE"
+  });
+
+  return parseJSON<DeleteFileResponse>(response);
 }
 
 function consumeSSEBlock(block: string, handlers: ChatStreamHandlers) {

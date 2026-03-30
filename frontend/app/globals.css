@@ -3,37 +3,41 @@
 @tailwind utilities;
 
 :root {
-  --font-body: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
-  --font-heading: "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
-  --background: 34 100% 98%;
-  --foreground: 24 32% 13%;
-  --card: 0 0% 100%;
-  --card-foreground: 24 32% 13%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 24 32% 13%;
-  --primary: 24 94% 53%;
+  --font-body: "DM Sans", "Segoe UI", sans-serif;
+  --font-heading: "Syne", "Segoe UI", sans-serif;
+  --background: 220 16% 5%;
+  --foreground: 210 40% 98%;
+  --card: 226 20% 10%;
+  --card-foreground: 210 40% 98%;
+  --popover: 228 20% 10%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 244 100% 69%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 30 100% 95%;
-  --secondary-foreground: 24 32% 13%;
-  --muted: 32 100% 96%;
-  --muted-foreground: 24 13% 40%;
-  --accent: 30 100% 92%;
-  --accent-foreground: 24 32% 13%;
-  --destructive: 0 84% 60%;
+  --secondary: 221 18% 15%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 224 17% 13%;
+  --muted-foreground: 218 20% 70%;
+  --accent: 221 18% 14%;
+  --accent-foreground: 210 40% 96%;
+  --destructive: 0 78% 63%;
   --destructive-foreground: 0 0% 100%;
-  --border: 30 50% 88%;
-  --input: 30 50% 88%;
-  --ring: 24 94% 53%;
-  --chart-1: 24 94% 53%;
-  --chart-2: 33 100% 58%;
-  --chart-3: 16 72% 45%;
-  --chart-4: 43 96% 56%;
-  --chart-5: 12 76% 61%;
-  --radius: 0.8rem;
+  --border: 220 18% 22%;
+  --input: 222 19% 18%;
+  --ring: 244 100% 69%;
+  --chart-1: 244 100% 69%;
+  --chart-2: 165 100% 42%;
+  --chart-3: 199 100% 62%;
+  --chart-4: 272 71% 64%;
+  --chart-5: 42 96% 63%;
+  --radius: 1.1rem;
 }
 
 * {
   @apply border-border;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html,
@@ -42,9 +46,49 @@ body {
 }
 
 body {
-  @apply text-foreground antialiased;
+  color: hsl(var(--foreground));
   font-family: var(--font-body);
-  background-color: #fffaf5;
+  background:
+    radial-gradient(circle at top left, rgba(108, 99, 255, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(0, 212, 170, 0.11), transparent 24%),
+    linear-gradient(180deg, rgba(15, 18, 28, 0.98), rgba(10, 11, 13, 1));
+  background-color: #0a0b0d;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.04) 0.8px, transparent 0.8px);
+  background-size: 72px 72px, 72px 72px, 18px 18px;
+  mask-image: radial-gradient(circle at center, black 44%, transparent 94%);
+  opacity: 0.22;
+  z-index: 0;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+main,
+header,
+section,
+div,
+article,
+aside,
+nav {
+  position: relative;
 }
 
 h1,
@@ -52,10 +96,94 @@ h2,
 h3,
 h4,
 h5,
-h6 {
+h6,
+.font-display {
   font-family: var(--font-heading), sans-serif;
 }
 
 ::selection {
-  background-color: rgba(249, 115, 22, 0.24);
+  background: rgba(108, 99, 255, 0.38);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 99, 255, 0.45);
+}
+
+@layer base {
+  a,
+  button,
+  input,
+  textarea,
+  select {
+    @apply outline-none;
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply ring-2 ring-ring/70 ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(18px);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.02),
+      0 18px 60px rgba(3, 7, 18, 0.45),
+      0 0 42px rgba(108, 99, 255, 0.08);
+  }
+
+  .surface-strong {
+    background: linear-gradient(180deg, rgba(18, 22, 34, 0.92), rgba(9, 11, 16, 0.94));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .glow-border {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 0 0 1px rgba(108, 99, 255, 0.05) inset,
+      0 0 32px rgba(108, 99, 255, 0.12);
+  }
+
+  .teal-glow {
+    box-shadow: 0 0 30px rgba(0, 212, 170, 0.18);
+  }
+
+  .hero-mesh {
+    background:
+      radial-gradient(circle at 18% 22%, rgba(108, 99, 255, 0.22), transparent 22%),
+      radial-gradient(circle at 82% 18%, rgba(0, 212, 170, 0.14), transparent 18%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .shadow-glow {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 20px 60px rgba(10, 11, 13, 0.6),
+      0 0 40px rgba(108, 99, 255, 0.12);
+  }
 }
