@@ -2,12 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, ArrowRight, BriefcaseBusiness, Files, MessageSquareText, UsersRound } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  BriefcaseBusiness,
+  Files,
+  MessageSquareText,
+  Sparkles,
+  UsersRound
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { AnimatedCounter } from "@/components/common/animated-counter";
 import { EmptyState } from "@/components/common/empty-state";
-import { PageHeader } from "@/components/common/page-header";
 import { UsageMeter } from "@/components/common/usage-meter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,10 +49,30 @@ export default function DashboardPage() {
 
   const stats = useMemo(
     () => [
-      { label: "Total Candidates", value: candidates.length, icon: UsersRound },
-      { label: "CVs Processed This Month", value: candidates.length, icon: Files },
-      { label: "Active Job Matches", value: matchRuns, icon: BriefcaseBusiness },
-      { label: "AI Chat Queries Used", value: chatQueries, icon: MessageSquareText }
+      {
+        label: "Total candidates",
+        value: candidates.length,
+        icon: UsersRound,
+        hint: "Structured profiles synced from SQLite"
+      },
+      {
+        label: "CVs processed",
+        value: candidates.length,
+        icon: Files,
+        hint: "Current workspace intake volume"
+      },
+      {
+        label: "Active matches",
+        value: matchRuns,
+        icon: BriefcaseBusiness,
+        hint: "JD analyses started from this workspace"
+      },
+      {
+        label: "AI chat queries",
+        value: chatQueries,
+        icon: MessageSquareText,
+        hint: "Knowledge-base questions asked so far"
+      }
     ],
     [candidates.length, matchRuns, chatQueries]
   );
@@ -63,19 +90,35 @@ export default function DashboardPage() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader
-        eyebrow="Overview"
-        title="Enterprise recruiter operations at a glance"
-        description="Track usage, intake volume, recent candidate activity, and jump into the next high-value action without leaving the dashboard."
-        action={
-          <Button asChild>
-            <Link href="/intake" className="gap-2">
-              Upload CVs
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        }
-      />
+      <Card className="overflow-hidden">
+        <CardContent className="flex flex-col gap-6 p-6 md:p-7 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <Badge variant="teal">Dashboard</Badge>
+            <h2 className="font-display mt-4 text-3xl font-semibold tracking-tight text-white md:text-4xl">
+              Recruiter operations, organized into one clean workspace.
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/56 md:text-base">
+              Track candidate volume, current activity, and plan usage without jumping across pages.
+              The dashboard surfaces only the actions and signals recruiters need most.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href="/intake" className="gap-2">
+                Upload CVs
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/match" className="gap-2">
+                Start Match
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 xl:grid-cols-4">
         {loading
@@ -92,18 +135,17 @@ export default function DashboardPage() {
               const Icon = stat.icon;
               return (
                 <Card key={stat.label}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm text-white/45">{stat.label}</p>
-                        <p className="mt-4 font-display text-4xl text-white">
-                          <AnimatedCounter value={stat.value} />
-                        </p>
-                      </div>
-                      <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary">
+                  <CardContent className="space-y-5 p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary">
                         <Icon className="h-5 w-5" />
                       </div>
+                      <p className="text-sm font-medium text-white/72">{stat.label}</p>
                     </div>
+                    <p className="font-display text-4xl text-white">
+                      <AnimatedCounter value={stat.value} />
+                    </p>
+                    <p className="text-sm leading-6 text-white/46">{stat.hint}</p>
                   </CardContent>
                 </Card>
               );
@@ -157,31 +199,34 @@ export default function DashboardPage() {
               <CardDescription>Jump directly into the next recruiter workflow.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">
-              <Button asChild className="justify-between">
-                <Link href="/intake">
-                  Upload CVs
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="secondary" className="justify-between">
-                <Link href="/match">
-                  Start New Match
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-between">
-                <Link href="/generate">
-                  Generate JD
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+              <Link
+                href="/intake"
+                className="flex items-center justify-between rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/78 transition hover:bg-white/[0.05]"
+              >
+                <span>Upload new CV batch</span>
+                <ArrowRight className="h-4 w-4 text-primary" />
+              </Link>
+              <Link
+                href="/match"
+                className="flex items-center justify-between rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/78 transition hover:bg-white/[0.05]"
+              >
+                <span>Run a new JD match</span>
+                <ArrowRight className="h-4 w-4 text-primary" />
+              </Link>
+              <Link
+                href="/generate"
+                className="flex items-center justify-between rounded-[22px] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/78 transition hover:bg-white/[0.05]"
+              >
+                <span>Generate a Smart JD</span>
+                <Sparkles className="h-4 w-4 text-primary" />
+              </Link>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Usage meter</CardTitle>
-              <CardDescription>Current Growth plan utilization based on tracked workspace actions.</CardDescription>
+              <CardDescription>Growth plan usage based on current recruiter activity in this browser session.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <UsageMeter label="CV uploads" used={candidates.length} total={300} />

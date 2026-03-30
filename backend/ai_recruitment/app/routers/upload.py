@@ -9,37 +9,25 @@ from app.services.ingestion_service import IngestionService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
+
 @router.post("/upload", response_model=UploadResponse)
 async def upload_documents(
     request: Request,
-    file: UploadFile | None = File(
-        default=None,
-        description="Single file input. Click the file-picker button and select a file from your system.",
-    ),
-    files: List[UploadFile] | None = File(
-        default=None,
-        description=(
-            "Multiple files input (.pdf, .txt, .docx). "
-            "Use the picker for each row and add more rows if needed."
-        ),
+    files: List[UploadFile] = File(
+        ...,
+        description="Upload one or more CV files (.pdf, .txt, .docx).",
     ),
 ) -> UploadResponse:
     """Upload one or more CV files and index them for RAG and matching."""
     ingestion_service: IngestionService = request.app.state.ingestion_service
 
-    upload_items: list[UploadFile] = []
-    if file is not None:
-        upload_items.append(file)
-    if files:
-        upload_items.extend(files)
-
-    if not upload_items:
+    if not files:
         raise HTTPException(
             status_code=400,
             detail="No files uploaded. Use the file picker and send multipart/form-data.",
         )
 
-    return await ingestion_service.ingest_files(files=upload_items)
+    return await ingestion_service.ingest_files(files=files)
 
 
 @router.delete("/file/{file_name}", response_model=DeleteFileResponse)

@@ -1,8 +1,8 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, FileStack, Trash2, UploadCloud } from "lucide-react";
+import { Eye, FileStack, FolderOpen, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteDocumentFile, listCandidates, uploadDocuments } from "@/lib/api/client";
 import type { CandidateProfile, UploadResponse } from "@/lib/api/types";
@@ -41,6 +42,18 @@ const statusProgress: Record<UploadStatus, number> = {
   error: 100
 };
 
+const statusMeta: Record<
+  UploadStatus,
+  { label: string; badgeVariant: "outline" | "teal" | "warning" }
+> = {
+  pending: { label: "Pending", badgeVariant: "outline" },
+  uploading: { label: "Uploading", badgeVariant: "outline" },
+  extracting: { label: "Extracting", badgeVariant: "outline" },
+  indexing: { label: "Indexing", badgeVariant: "outline" },
+  done: { label: "Indexed", badgeVariant: "teal" },
+  error: { label: "Error", badgeVariant: "warning" }
+};
+
 function uniqueId() {
   return Math.random().toString(36).slice(2);
 }
@@ -64,6 +77,7 @@ export default function IntakePage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [history, setHistory] = useState<FileHistoryRow[]>([]);
   const [summary, setSummary] = useState<UploadResponse | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const refreshHistory = async () => {
     try {
@@ -91,12 +105,18 @@ export default function IntakePage() {
       return;
     }
 
+    const existingNames = new Set(queue.map((item) => item.file.name));
     const nextItems = supported.map((file) => ({
       id: uniqueId(),
       file,
       status: "pending" as UploadStatus,
       previewUrl: URL.createObjectURL(file)
-    }));
+    })).filter((item) => !existingNames.has(item.file.name));
+
+    if (nextItems.length === 0) {
+      toast.error("These files are already in the queue.");
+      return;
+    }
 
     setQueue((current) => [...current, ...nextItems]);
   };
@@ -107,7 +127,7 @@ export default function IntakePage() {
     }
   };
 
-  const onDrop = (event: DragEvent<HTMLLabelElement>) => {
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     addFiles(event.dataTransfer.files);
   };
@@ -181,22 +201,57 @@ export default function IntakePage() {
       />
 
       <Card>
-        <CardContent className="p-6">
-          <label
+        <CardContent className="p-6 md:p-7">
+          <div
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
-            className="flex cursor-pointer flex-col items-center justify-center rounded-[28px] border border-dashed border-white/12 bg-white/[0.03] px-8 py-14 text-center transition hover:border-primary/45 hover:bg-primary/10"
+            className="grid gap-6 rounded-[30px] border border-dashed border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 md:grid-cols-[1.2fr,0.8fr] md:p-8"
           >
-            <UploadCloud className="h-10 w-10 text-primary" />
-            <p className="mt-5 font-display text-2xl text-white">Drag and drop CV files here</p>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-white/52">
-              Support for PDF, DOCX, and TXT. Each file is uploaded, parsed, chunked, embedded, and indexed against your backend.
-            </p>
-            <div className="mt-6 rounded-full border border-white/10 bg-white/[0.05] px-5 py-2 text-sm text-white/70">
-              Or click to browse from your system
+            <div className="flex flex-col justify-center">
+              <div className="grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-primary">
+                <UploadCloud className="h-6 w-6" />
+              </div>
+              <p className="font-display mt-5 text-2xl text-white md:text-3xl">Upload candidate files</p>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/54">
+                Drag documents into the intake zone or browse from your system. TalentCore will upload,
+                extract, and index every supported resume against your backend workflow.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button type="button" onClick={() => inputRef.current?.click()}>
+                  <FolderOpen className="h-4 w-4" />
+                  Choose files
+                </Button>
+                <Badge variant="outline" className="normal-case tracking-normal text-xs">
+                  PDF, DOCX, TXT
+                </Badge>
+              </div>
+              <input
+                ref={inputRef}
+                aria-label="Upload candidate files"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={onInputChange}
+              />
             </div>
-            <input aria-label="Upload candidate files" type="file" multiple className="hidden" onChange={onInputChange} />
-          </label>
+
+            <div className="grid gap-3 md:grid-rows-3">
+              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Queued files</p>
+                <p className="mt-3 font-display text-3xl text-white">{queue.length}</p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Last batch</p>
+                <p className="mt-3 text-sm text-white/60">
+                  {summary ? `${summary.files_processed} files processed` : "No batch processed yet"}
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Flow</p>
+                <p className="mt-3 text-sm text-white/60">Uploading, extracting, indexing, and saving to your backend.</p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -214,47 +269,58 @@ export default function IntakePage() {
                 description="Add resumes to see per-file progress, local preview actions, and ingestion status updates."
               />
             ) : (
-              <div className="space-y-3">
-                {queue.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                    className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-white">{item.file.name}</p>
-                        <p className="mt-1 text-sm text-white/48">
-                          {formatFileSize(item.file.size)} • {item.file.type || "Unknown type"}
-                        </p>
-                        {item.candidateName && <p className="mt-2 text-sm text-[#8DF5DF]">Candidate: {item.candidateName}</p>}
-                        {item.error && <p className="mt-2 text-sm text-red-300">{item.error}</p>}
+              <ScrollArea className="h-[500px] pr-3">
+                <div className="space-y-3">
+                  {queue.map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.04 }}
+                      className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-white">{item.file.name}</p>
+                          <p className="mt-1 text-sm text-white/48">
+                            {formatFileSize(item.file.size)} • {item.file.type || "Unknown type"}
+                          </p>
+                          {item.candidateName && (
+                            <p className="mt-2 text-sm text-[#8DF5DF]">Candidate: {item.candidateName}</p>
+                          )}
+                          {item.error && <p className="mt-2 text-sm text-red-300">{item.error}</p>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={statusMeta[item.status].badgeVariant}
+                            className="px-2.5 py-1 normal-case tracking-normal text-[10px] sm:text-[11px]"
+                          >
+                            {statusMeta[item.status].label}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => window.open(item.previewUrl, "_blank", "noopener,noreferrer")}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => removeQueuedFile(item.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={item.status === "done" ? "teal" : item.status === "error" ? "warning" : "outline"}>
-                          {item.status}
-                        </Badge>
-                        <Button variant="ghost" size="icon" onClick={() => window.open(item.previewUrl, "_blank", "noopener,noreferrer")}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => removeQueuedFile(item.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/6">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${statusProgress[item.status]}%` }}
+                          transition={{ duration: 0.5 }}
+                          className="h-full rounded-full bg-[linear-gradient(90deg,#6C63FF,#00D4AA)]"
+                        />
                       </div>
-                    </div>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/6">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${statusProgress[item.status]}%` }}
-                        transition={{ duration: 0.5 }}
-                        className="h-full rounded-full bg-[linear-gradient(90deg,#6C63FF,#00D4AA)]"
-                      />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </ScrollArea>
             )}
           </CardContent>
         </Card>
@@ -289,7 +355,9 @@ export default function IntakePage() {
                       <p className="mt-1 text-sm text-white/48">{candidate.current_position || "Position not extracted"}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {candidate.skills.slice(0, 4).map((skill) => (
-                          <Badge key={skill} variant="outline">{skill}</Badge>
+                          <Badge key={skill} variant="outline" className="normal-case tracking-normal text-[10px] sm:text-[11px]">
+                            {skill}
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -318,31 +386,47 @@ export default function IntakePage() {
                   description="Once resumes are ingested, the history table will show source files and extracted candidate counts."
                 />
               ) : (
-                <div className="space-y-3">
-                  {history.map((row) => (
-                    <div key={row.fileName} className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                      <div>
-                        <p className="font-medium text-white">{row.fileName}</p>
-                        <p className="mt-1 text-sm text-white/48">
-                          {row.candidatesExtracted} candidates extracted • {formatDate(row.lastSeen)}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        onClick={async () => {
-                          try {
-                            await deleteDocumentFile(row.fileName);
-                            toast.success(`${row.fileName} removed`);
-                            refreshHistory();
-                          } catch (error) {
-                            toast.error(error instanceof Error ? error.message : "Unable to delete file");
-                          }
-                        }}
-                      >
-                        Delete
-                      </Button>
+                <div className="rounded-[24px] border border-white/10 bg-white/[0.02]">
+                  <div className="grid grid-cols-[minmax(0,1fr)_130px_120px] gap-3 border-b border-white/8 px-4 py-3 text-xs uppercase tracking-[0.2em] text-white/34">
+                    <span>File</span>
+                    <span>Candidates</span>
+                    <span>Action</span>
+                  </div>
+                  <ScrollArea className="h-[360px]">
+                    <div className="divide-y divide-white/8">
+                      {history.map((row) => (
+                        <div
+                          key={row.fileName}
+                          className="grid grid-cols-[minmax(0,1fr)_130px_120px] items-center gap-3 px-4 py-4"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-white">{row.fileName}</p>
+                            <p className="mt-1 text-sm text-white/48">{formatDate(row.lastSeen)}</p>
+                          </div>
+                          <div>
+                            <Badge variant="outline" className="w-fit px-2.5 py-1 normal-case tracking-normal text-[10px] sm:text-[11px]">
+                              {row.candidatesExtracted} extracted
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            className="justify-start px-0 text-white/72 hover:text-white"
+                            onClick={async () => {
+                              try {
+                                await deleteDocumentFile(row.fileName);
+                                toast.success(`${row.fileName} removed`);
+                                refreshHistory();
+                              } catch (error) {
+                                toast.error(error instanceof Error ? error.message : "Unable to delete file");
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </ScrollArea>
                 </div>
               )}
             </CardContent>
