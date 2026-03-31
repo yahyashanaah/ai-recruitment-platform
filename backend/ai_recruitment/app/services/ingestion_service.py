@@ -6,33 +6,37 @@ from uuid import uuid4
 from fastapi import UploadFile
 from langchain_openai import ChatOpenAI
 
-from app.models.candidate import CandidateORM, CandidateRepository
-from app.models.schemas import CandidateExtractionSchema, CandidateProfileResponse, DeleteCandidateResponse, DeleteFileResponse, UploadResponse
+from app.auth.service import AuthenticatedRecruiter
+from app.models.schemas import CandidateExtractionSchema, CandidateProfileResponse, UploadResponse
 from app.prompts.extraction_prompt import build_extraction_prompt
+from app.repositories.candidates import CandidateRepository
+from app.services.embedding_service import EmbeddingService
 from app.utils.chunking import chunk_pages
 from app.utils.document_loader import load_document
-from app.vectorstore.base import BaseVectorStore
 
 
 class IngestionService:
-    """Service layer for CV ingestion and candidate profile operations."""
+    """Recruiter-scoped CV ingestion pipeline backed by Supabase and pgvector."""
 
     def __init__(
         self,
-        vector_store: BaseVectorStore,
         candidate_repository: CandidateRepository,
         extraction_model: ChatOpenAI,
+        embedding_service: EmbeddingService,
         chunk_size: int,
         chunk_overlap: int,
     ) -> None:
-        self._vector_store = vector_store
         self._candidate_repository = candidate_repository
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
+        self._embedding_service = embedding_service
         self._extractor = extraction_model.with_structured_output(CandidateExtractionSchema)
 
-    async def ingest_files(self, files: list[UploadFile]) -> UploadResponse:
-        """Ingest uploaded CV files, index chunks, and persist structured profiles."""
+    async def ingest_files(
+        self,
+        files: list[UploadFile],
+        recruiter: AuthenticatedRecruiter,
+    ) -> UploadResponse:
         processed_candidates: list[CandidateProfileResponse] = []
         errors: list[str] = []
         total_chunks = 0
@@ -62,73 +66,77 @@ class IngestionService:
                         "file_name": file_name,
                     },
                 )
-
                 if not chunks:
                     raise ValueError("No chunkable content found in the document.")
 
-                self._vector_store.add_documents(chunks)
+                embeddings = self._embedding_service.embed_documents([chunk.page_content for chunk in chunks])
+                candidate_payload = {
+                    "id": candidate_id,
+                    "file_name": file_name,
+                    "name": candidate_name,
+                    "linkedin": profile_payload.get("linkedin", ""),
+                    "phone_number": profile_payload.get("phone_number", ""),
+                    "gmail": profile_payload.get("gmail", ""),
+                    "location": profile_payload.get("location", ""),
+                    "years_of_experience": float(profile_payload.get("years_of_experience") or 0),
+                    "skills": profile_payload.get("skills", []),
+                    "education": profile_payload.get("education", ""),
+                    "current_position": profile_payload.get("current_position", ""),
+                    "certifications": profile_payload.get("certifications", []),
+                    "raw_profile": {
+                        **profile_payload,
+                        "file_name": file_name,
+                    },
+                }
+                chunk_payloads = [
+                    {
+                        "id": str(uuid4()),
+                        "candidate_id": candidate_id,
+                        "content": chunk.page_content,
+                        "embedding": embedding,
+                        "page_number": int(chunk.metadata.get("page_number", 1)),
+                        "file_name": file_name,
+                    }
+                    for chunk, embedding in zip(chunks, embeddings, strict=True)
+                ]
 
-                try:
-                    candidate_row = self._candidate_repository.create_candidate(
-                        candidate_id=candidate_id,
+                saved_candidate_id = self._candidate_repository.ingest_candidate_with_chunks(
+                    access_token=recruiter.access_token,
+                    recruiter_id=recruiter.id,
+                    candidate_payload=candidate_payload,
+                    chunks_payload=chunk_payloads,
+                )
+                processed_candidates.append(
+                    CandidateProfileResponse(
+                        candidate_id=saved_candidate_id,
                         file_name=file_name,
-                        profile=profile_payload,
+                        name=candidate_name,
+                        linkedin=str(profile_payload.get("linkedin") or ""),
+                        phone_number=str(profile_payload.get("phone_number") or ""),
+                        gmail=str(profile_payload.get("gmail") or ""),
+                        location=str(profile_payload.get("location") or ""),
+                        years_of_experience=float(profile_payload.get("years_of_experience") or 0),
+                        skills=list(profile_payload.get("skills") or []),
+                        education=str(profile_payload.get("education") or ""),
+                        current_position=str(profile_payload.get("current_position") or ""),
+                        certifications=list(profile_payload.get("certifications") or []),
+                        raw_profile={**profile_payload, "file_name": file_name},
                     )
-                except Exception:
-                    # Keep stores consistent if SQLite write fails.
-                    self._vector_store.delete_candidate(candidate_id=candidate_id)
-                    raise
-
-                total_chunks += len(chunks)
-                processed_candidates.append(self._to_response_model(candidate_row))
+                )
+                total_chunks += len(chunk_payloads)
             except Exception as exc:  # noqa: BLE001
                 errors.append(f"{file_name}: {exc}")
 
         files_processed = len(processed_candidates)
-        failed_count = len(errors)
-
         return UploadResponse(
             success=files_processed > 0,
             message="Files processed successfully" if files_processed > 0 else "No files processed",
             files_processed=files_processed,
             total_chunks=total_chunks,
             processed_count=files_processed,
-            failed_count=failed_count,
+            failed_count=len(errors),
             candidates=processed_candidates,
             errors=errors,
-        )
-
-    def get_all_candidates(self) -> list[CandidateProfileResponse]:
-        rows = self._candidate_repository.get_all_candidates()
-        return [self._to_response_model(row) for row in rows]
-
-    def delete_candidate(self, candidate_id: str) -> DeleteCandidateResponse:
-        deleted_from_sqlite = self._candidate_repository.delete_candidate(
-            candidate_id=candidate_id,
-        )
-        deleted_vectors = self._vector_store.delete_candidate(
-            candidate_id=candidate_id,
-        )
-
-        return DeleteCandidateResponse(
-            candidate_id=candidate_id,
-            deleted_from_sqlite=deleted_from_sqlite,
-            deleted_vectors=deleted_vectors,
-        )
-
-    def delete_file(self, file_name: str) -> DeleteFileResponse:
-        candidate_ids = self._candidate_repository.get_candidate_ids_by_file_name(file_name=file_name)
-
-        deleted_vectors = 0
-        for candidate_id in candidate_ids:
-            deleted_vectors += self._vector_store.delete_candidate(candidate_id=candidate_id)
-
-        deleted_candidates = self._candidate_repository.delete_candidates_by_file_name(file_name=file_name)
-
-        return DeleteFileResponse(
-            file_name=file_name,
-            deleted_candidates=deleted_candidates,
-            deleted_vectors=deleted_vectors,
         )
 
     async def _extract_profile(self, full_text: str, file_name: str) -> CandidateExtractionSchema:
@@ -136,22 +144,4 @@ class IngestionService:
         try:
             return await self._extractor.ainvoke(prompt)
         except Exception:
-            # If extraction fails, continue ingestion with a minimal profile.
             return CandidateExtractionSchema(name=Path(file_name).stem)
-
-    @staticmethod
-    def _to_response_model(row: CandidateORM) -> CandidateProfileResponse:
-        return CandidateProfileResponse(
-            candidate_id=row.candidate_id,
-            file_name=row.file_name,
-            name=row.name,
-            phone_number=row.phone_number,
-            gmail=row.gmail,
-            location=row.location,
-            years_of_experience=float(row.years_of_experience or 0),
-            skills=list(row.skills or []),
-            education=row.education,
-            current_position=row.current_position,
-            certifications=list(row.certifications or []),
-            raw_profile=dict(row.raw_profile or {}),
-        )

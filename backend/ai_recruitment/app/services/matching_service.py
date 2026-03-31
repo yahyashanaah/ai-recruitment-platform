@@ -1,59 +1,70 @@
 from __future__ import annotations
 
-from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 
-from app.models.candidate import CandidateORM, CandidateRepository
-from app.models.schemas import (
-    CandidateProfileResponse,
-    JDExtractionSchema,
-    MatchJDResponse,
-    SmartJDResponse,
-)
+from app.auth.service import AuthenticatedRecruiter
+from app.models.schemas import CandidateProfileResponse, JDExtractionSchema, MatchJDResponse, SmartJDResponse
 from app.prompts.jd_prompt import build_jd_prompt, build_smart_jd_prompt
+from app.repositories.candidates import CandidateRepository
+from app.repositories.chunks import ChunkRepository
+from app.services.embedding_service import EmbeddingService
 from app.services.scoring_service import ScoringService
-from app.vectorstore.base import BaseVectorStore
 
 
 class MatchingService:
-    """Service that matches a JD against indexed candidates and scores top matches."""
+    """JD parsing, semantic retrieval, and weighted candidate ranking service."""
 
     def __init__(
         self,
-        vector_store: BaseVectorStore,
         candidate_repository: CandidateRepository,
+        chunk_repository: ChunkRepository,
         jd_parser_model: ChatOpenAI,
+        embedding_service: EmbeddingService,
         scoring_service: ScoringService,
         retrieval_k: int = 50,
     ) -> None:
-        self._vector_store = vector_store
         self._candidate_repository = candidate_repository
+        self._chunk_repository = chunk_repository
+        self._embedding_service = embedding_service
         self._scoring_service = scoring_service
         self._retrieval_k = retrieval_k
         self._jd_parser = jd_parser_model.with_structured_output(JDExtractionSchema)
         self._jd_generator = jd_parser_model.with_structured_output(SmartJDResponse)
 
-    async def match_job_description(self, job_description: str, top_n: int = 3) -> MatchJDResponse:
+    async def match_job_description(
+        self,
+        recruiter: AuthenticatedRecruiter,
+        job_description: str,
+        top_n: int = 3,
+    ) -> MatchJDResponse:
         parsed_jd = await self._parse_job_description(job_description)
-
-        docs = self._vector_store.similarity_search(
-            query=job_description,
-            k=self._retrieval_k,
+        matches = self._chunk_repository.search_chunks(
+            access_token=recruiter.access_token,
+            recruiter_id=recruiter.id,
+            query_embedding=self._embedding_service.embed_query(job_description),
+            limit=max(self._retrieval_k, top_n * 10),
         )
-        candidate_pool_size = max(10, min(60, top_n * 4))
-        ranked_candidate_ids = self._rank_candidates_from_docs(docs)[:candidate_pool_size]
+        candidate_ids = self._rank_candidate_ids(matches)
 
-        if ranked_candidate_ids:
-            candidate_rows = self._candidate_repository.get_candidates_by_ids(
-                candidate_ids=ranked_candidate_ids,
+        if candidate_ids:
+            rows, _ = self._candidate_repository.list_candidates(
+                access_token=recruiter.access_token,
+                recruiter_id=recruiter.id,
+                limit=max(top_n * 5, 10),
+                offset=0,
+                candidate_ids=candidate_ids,
             )
         else:
-            candidate_rows = self._candidate_repository.get_all_candidates()[:candidate_pool_size]
+            rows, _ = self._candidate_repository.list_candidates(
+                access_token=recruiter.access_token,
+                recruiter_id=recruiter.id,
+                limit=max(top_n * 5, 10),
+                offset=0,
+            )
 
-        candidate_profiles = [self._to_profile_response(row) for row in candidate_rows]
+        candidate_profiles = [CandidateProfileResponse.from_record(row) for row in rows]
         scored = [self._scoring_service.score_candidate(profile, parsed_jd) for profile in candidate_profiles]
         scored.sort(key=lambda item: item.overall_score, reverse=True)
-
         return MatchJDResponse(parsed_jd=parsed_jd, top_candidates=scored[:top_n])
 
     async def generate_smart_job_description(
@@ -74,38 +85,20 @@ class MatchingService:
         return await self._jd_generator.ainvoke(prompt)
 
     async def _parse_job_description(self, job_description: str) -> JDExtractionSchema:
-        prompt = build_jd_prompt(job_description=job_description)
-        return await self._jd_parser.ainvoke(prompt)
+        return await self._jd_parser.ainvoke(build_jd_prompt(job_description=job_description))
 
     @staticmethod
-    def _rank_candidates_from_docs(documents: list[Document]) -> list[str]:
+    def _rank_candidate_ids(matches: list[dict[str, object]]) -> list[str]:
         rank_map: dict[str, float] = {}
 
-        for position, doc in enumerate(documents, start=1):
-            metadata = doc.metadata or {}
-            candidate_id = str(metadata.get("candidate_id", ""))
+        for position, match in enumerate(matches, start=1):
+            candidate_id = str(match.get("candidate_id") or "")
             if not candidate_id:
                 continue
+            similarity = float(match.get("similarity") or 0)
+            rank_map[candidate_id] = rank_map.get(candidate_id, 0.0) + similarity + (1.0 / position)
 
-            # Higher weight for earlier retrieval positions.
-            rank_map[candidate_id] = rank_map.get(candidate_id, 0.0) + (1.0 / position)
-
-        ranked_pairs = sorted(rank_map.items(), key=lambda item: item[1], reverse=True)
-        return [candidate_id for candidate_id, _ in ranked_pairs]
-
-    @staticmethod
-    def _to_profile_response(row: CandidateORM) -> CandidateProfileResponse:
-        return CandidateProfileResponse(
-            candidate_id=row.candidate_id,
-            file_name=row.file_name,
-            name=row.name,
-            phone_number=row.phone_number,
-            gmail=row.gmail,
-            location=row.location,
-            years_of_experience=float(row.years_of_experience or 0),
-            skills=list(row.skills or []),
-            education=row.education,
-            current_position=row.current_position,
-            certifications=list(row.certifications or []),
-            raw_profile=dict(row.raw_profile or {}),
-        )
+        return [
+            candidate_id
+            for candidate_id, _ in sorted(rank_map.items(), key=lambda item: item[1], reverse=True)
+        ]

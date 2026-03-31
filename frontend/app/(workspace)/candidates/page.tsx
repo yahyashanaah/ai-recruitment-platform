@@ -6,10 +6,12 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
+import { ScoreRing } from "@/components/common/score-ring";
 import { SectionToolbar } from "@/components/common/section-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -20,7 +22,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteCandidate, listCandidates } from "@/lib/api/client";
 import type { CandidateProfile } from "@/lib/api/types";
-import { getInitials } from "@/lib/utils";
+import { formatDate, getInitials } from "@/lib/utils";
 
 function computeProfileScore(candidate: CandidateProfile) {
   return Math.min(
@@ -53,7 +55,7 @@ export default function CandidatesPage() {
   };
 
   useEffect(() => {
-    loadCandidates();
+    void loadCandidates();
   }, []);
 
   const filteredCandidates = useMemo(() => {
@@ -63,7 +65,8 @@ export default function CandidatesPage() {
       const skillsMatch = !skillsFilter || candidate.skills.join(" ").toLowerCase().includes(skillsFilter.toLowerCase());
       const locationMatch = !locationFilter || candidate.location.toLowerCase().includes(locationFilter.toLowerCase());
       const educationMatch = !educationFilter || candidate.education.toLowerCase().includes(educationFilter.toLowerCase());
-      const certMatch = !certificationsFilter || candidate.certifications.join(" ").toLowerCase().includes(certificationsFilter.toLowerCase());
+      const certMatch =
+        !certificationsFilter || candidate.certifications.join(" ").toLowerCase().includes(certificationsFilter.toLowerCase());
       const experienceMatch = candidate.years_of_experience >= minExperience;
       return searchMatch && skillsMatch && locationMatch && educationMatch && certMatch && experienceMatch;
     });
@@ -75,223 +78,272 @@ export default function CandidatesPage() {
     );
   };
 
+  const runDelete = async (candidateId: string) => {
+    try {
+      await deleteCandidate(candidateId);
+      setCandidates((current) => current.filter((candidate) => candidate.candidate_id !== candidateId));
+      setSelectedIds((current) => current.filter((id) => id !== candidateId));
+      if (activeCandidate?.candidate_id === candidateId) {
+        setActiveCandidate(null);
+      }
+      toast.success("Candidate deleted");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete candidate");
+    }
+  };
+
   const runBulkDelete = async () => {
     if (selectedIds.length === 0) {
       return;
     }
 
     try {
-      for (const candidateId of selectedIds) {
-        await deleteCandidate(candidateId);
-      }
-      toast.success(`${selectedIds.length} candidates deleted`);
+      await Promise.all(selectedIds.map((candidateId) => deleteCandidate(candidateId)));
+      setCandidates((current) => current.filter((candidate) => !selectedIds.includes(candidate.candidate_id)));
       setSelectedIds([]);
-      loadCandidates();
+      setActiveCandidate(null);
+      toast.success("Selected candidates deleted");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Bulk delete failed");
+      toast.error(error instanceof Error ? error.message : "Unable to delete selected candidates");
     }
   };
 
   return (
-    <>
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <PageHeader
-            eyebrow="Candidates"
-            title="Search and manage extracted talent profiles"
-            description="Filter your structured candidate database by skills, experience, education, and certification signals."
-          />
+    <div className="grid gap-6">
+      <PageHeader
+        eyebrow="Candidates"
+        title="Review structured profiles with a cleaner management surface"
+        description="Search, filter, and inspect recruiter-scoped candidates without leaving the same light product system as the landing page."
+      />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-primary" />
-                Filters
-              </CardTitle>
-              <CardDescription>Local filtering over structured candidate data fetched from your backend.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-white/28" placeholder="Search by name, role, or skill" />
-              <input value={skillsFilter} onChange={(event) => setSkillsFilter(event.target.value)} className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-white/28" placeholder="Skills" />
-              <input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-white/28" placeholder="Location" />
-              <input value={educationFilter} onChange={(event) => setEducationFilter(event.target.value)} className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-white/28" placeholder="Education level" />
-              <input value={certificationsFilter} onChange={(event) => setCertificationsFilter(event.target.value)} className="h-11 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-white placeholder:text-white/28" placeholder="Certifications" />
-              <div>
-                <div className="mb-2 flex items-center justify-between text-sm text-white/52">
-                  <span>Minimum experience</span>
-                  <span>{minExperience}+ years</span>
-                </div>
-                <input type="range" min={0} max={15} value={minExperience} onChange={(event) => setMinExperience(Number(event.target.value))} className="w-full accent-[#6C63FF]" />
-              </div>
-            </CardContent>
-          </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-orange-600" />
+            Candidate filters
+          </CardTitle>
+          <CardDescription>Filter by skills, location, education, certifications, and years of experience.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search candidates" />
+          <Input value={skillsFilter} onChange={(event) => setSkillsFilter(event.target.value)} placeholder="Skills" />
+          <Input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} placeholder="Location" />
+          <Input value={educationFilter} onChange={(event) => setEducationFilter(event.target.value)} placeholder="Education" />
+          <Input
+            value={certificationsFilter}
+            onChange={(event) => setCertificationsFilter(event.target.value)}
+            placeholder="Certifications"
+          />
+          <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-3">
+            <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+              <span>Min experience</span>
+              <span>{minExperience} years</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={15}
+              value={minExperience}
+              onChange={(event) => setMinExperience(Number(event.target.value))}
+              className="mt-3 h-2 w-full accent-orange-500"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <SectionToolbar
+        left={
+          <>
+            <Badge variant="outline" className="normal-case tracking-normal">
+              {filteredCandidates.length} shown
+            </Badge>
+            <Badge variant="secondary" className="normal-case tracking-normal">
+              {selectedIds.length} selected
+            </Badge>
+          </>
+        }
+        right={
+          <Button variant="destructive" onClick={runBulkDelete} disabled={selectedIds.length === 0}>
+            <Trash2 className="h-4 w-4" />
+            Bulk delete
+          </Button>
+        }
+      />
+
+      {loading ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-52 rounded-[28px]" />
+          ))}
         </div>
+      ) : filteredCandidates.length === 0 ? (
+        <EmptyState
+          icon={UserRoundSearch}
+          title="No matching candidates"
+          description="Adjust the filters or upload more resumes to build your candidate workspace."
+        />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {filteredCandidates.map((candidate) => {
+            const isSelected = selectedIds.includes(candidate.candidate_id);
+            const score = computeProfileScore(candidate);
 
-        <div className="space-y-6">
-          <SectionToolbar
-            left={
-              <>
-                <Badge variant="outline">{filteredCandidates.length} candidates</Badge>
-                <Badge variant="secondary">{selectedIds.length} selected</Badge>
-              </>
-            }
-            right={
-              <Button variant="destructive" onClick={runBulkDelete} disabled={selectedIds.length === 0}>
-                <Trash2 className="h-4 w-4" />
-                Bulk delete
-              </Button>
-            }
-          />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Candidate intelligence list</CardTitle>
-              <CardDescription>Review extracted profiles and open detail panels without leaving the table.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4].map((item) => (
-                    <Skeleton key={item} className="h-24 w-full" />
-                  ))}
-                </div>
-              ) : filteredCandidates.length === 0 ? (
-                <EmptyState
-                  icon={UserRoundSearch}
-                  title="No matching candidates"
-                  description="Adjust your search or filters to surface candidate profiles from the structured talent database."
-                />
-              ) : (
-                <div className="space-y-3">
-                  {filteredCandidates.map((candidate) => (
+            return (
+              <Card key={candidate.candidate_id} className={isSelected ? "border-orange-200" : undefined}>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
                     <button
-                      key={candidate.candidate_id}
                       type="button"
-                      onClick={() => setActiveCandidate(candidate)}
-                      className="w-full rounded-[24px] border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-primary/35 hover:bg-white/[0.05]"
+                      onClick={() => toggleSelect(candidate.candidate_id)}
+                      aria-label={`Select ${candidate.name}`}
+                      className={`mt-1 h-5 w-5 rounded border transition ${
+                        isSelected ? "border-orange-500 bg-orange-500" : "border-slate-300 bg-white"
+                      }`}
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex items-start gap-4">
-                          <label className="mt-1 flex h-5 w-5 items-center justify-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.includes(candidate.candidate_id)}
-                              onChange={(event) => {
-                                event.stopPropagation();
-                                toggleSelect(candidate.candidate_id);
-                              }}
-                              onClick={(event) => event.stopPropagation()}
-                              className="h-4 w-4 rounded border-white/10 bg-transparent accent-[#6C63FF]"
-                            />
-                          </label>
-                          <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-white">
-                            {getInitials(candidate.name)}
-                          </div>
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <p className="font-medium text-white">{candidate.name}</p>
-                              <Badge variant="teal">AI score {Math.round(computeProfileScore(candidate))}%</Badge>
-                            </div>
-                            <p className="mt-1 text-sm text-white/50">{candidate.current_position || "Position unavailable"}</p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {candidate.skills.slice(0, 3).map((skill) => (
-                                <Badge key={skill} variant="outline">{skill}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right text-sm text-white/48">
-                          <p>{candidate.location || "Unknown location"}</p>
-                          <p className="mt-1">{candidate.years_of_experience} years exp.</p>
-                        </div>
-                      </div>
+                      <span className="sr-only">Select candidate</span>
                     </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+
+                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-orange-100 bg-orange-50 text-base font-semibold text-orange-700">
+                      {getInitials(candidate.name)}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-lg font-semibold text-slate-950">{candidate.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {candidate.current_position || "Candidate profile"}
+                          </p>
+                        </div>
+                        <ScoreRing value={score} label="Fit" size={76} />
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Badge variant="outline" className="normal-case tracking-normal">
+                          {candidate.location || "Location not available"}
+                        </Badge>
+                        <Badge variant="outline" className="normal-case tracking-normal">
+                          {candidate.years_of_experience} years experience
+                        </Badge>
+                        <Badge variant="secondary" className="normal-case tracking-normal">
+                          {formatDate(candidate.created_at ?? Date.now())}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {candidate.skills.slice(0, 3).map((skill) => (
+                          <Badge key={skill} className="normal-case tracking-normal">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      <p className="mt-4 text-sm leading-7 text-slate-600">Source file: {candidate.file_name}</p>
+
+                      <div className="mt-5 flex flex-wrap gap-3">
+                        <Button variant="secondary" onClick={() => setActiveCandidate(candidate)}>
+                          View details
+                        </Button>
+                        <Button variant="outline" onClick={() => void runDelete(candidate.candidate_id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      </div>
+      )}
 
       <Sheet open={Boolean(activeCandidate)} onOpenChange={(open) => !open && setActiveCandidate(null)}>
-        <SheetContent side="right">
-          {activeCandidate && (
-            <>
+        <SheetContent>
+          {activeCandidate ? (
+            <div className="flex h-full flex-col gap-6 overflow-y-auto pr-1">
               <SheetHeader>
                 <SheetTitle>{activeCandidate.name}</SheetTitle>
-                <SheetDescription>{activeCandidate.current_position || "Candidate profile"}</SheetDescription>
+                <SheetDescription>
+                  {activeCandidate.current_position || "Candidate profile"} {activeCandidate.location ? `• ${activeCandidate.location}` : ""}
+                </SheetDescription>
               </SheetHeader>
 
-              <div className="space-y-5 overflow-y-auto pr-2 text-sm">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.24em] text-white/35">Phone</p>
-                    <p className="mt-2 text-white">{activeCandidate.phone_number || "Not extracted"}</p>
-                  </div>
-                  <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.24em] text-white/35">Email</p>
-                    <p className="mt-2 text-white">{activeCandidate.gmail || "Not extracted"}</p>
-                  </div>
-                  <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.24em] text-white/35">Location</p>
-                    <p className="mt-2 text-white">{activeCandidate.location || "Not extracted"}</p>
-                  </div>
-                  <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-xs uppercase tracking-[0.24em] text-white/35">Experience</p>
-                    <p className="mt-2 text-white">{activeCandidate.years_of_experience} years</p>
-                  </div>
-                </div>
+              <div className="grid gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Profile details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 text-sm text-slate-700 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Email</p>
+                      <p className="mt-2">{activeCandidate.gmail || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Phone</p>
+                      <p className="mt-2">{activeCandidate.phone_number || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">LinkedIn</p>
+                      <p className="mt-2 break-all">{activeCandidate.linkedin || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Education</p>
+                      <p className="mt-2">{activeCandidate.education || "Not provided"}</p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Education</p>
-                  <p className="mt-2 text-white">{activeCandidate.education || "Not extracted"}</p>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Skills and certifications</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Skills</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {activeCandidate.skills.map((skill) => (
+                          <Badge key={skill} className="normal-case tracking-normal">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Certifications</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {activeCandidate.certifications.length > 0 ? (
+                          activeCandidate.certifications.map((certification) => (
+                            <Badge key={certification} variant="outline" className="normal-case tracking-normal">
+                              {certification}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-500">No certifications listed.</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Skills</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {activeCandidate.skills.map((skill) => (
-                      <Badge key={skill} variant="teal">{skill}</Badge>
-                    ))}
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Source</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-slate-700">
+                    <p>File name: {activeCandidate.file_name}</p>
+                    <p>Created: {formatDate(activeCandidate.created_at ?? Date.now())}</p>
+                  </CardContent>
+                </Card>
 
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Certifications</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {activeCandidate.certifications.length === 0 && <span className="text-white/48">None extracted</span>}
-                    {activeCandidate.certifications.map((certification) => (
-                      <Badge key={certification} variant="outline">{certification}</Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Upload source</p>
-                  <p className="mt-2 text-white">{activeCandidate.file_name}</p>
-                </div>
-
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    try {
-                      await deleteCandidate(activeCandidate.candidate_id);
-                      toast.success(`${activeCandidate.name} deleted`);
-                      setActiveCandidate(null);
-                      loadCandidates();
-                    } catch (error) {
-                      toast.error(error instanceof Error ? error.message : "Unable to delete candidate");
-                    }
-                  }}
-                >
+                <Button variant="destructive" onClick={() => void runDelete(activeCandidate.candidate_id)}>
+                  <Trash2 className="h-4 w-4" />
                   Delete candidate
                 </Button>
               </div>
-            </>
-          )}
+            </div>
+          ) : null}
         </SheetContent>
       </Sheet>
-    </>
+    </div>
   );
 }

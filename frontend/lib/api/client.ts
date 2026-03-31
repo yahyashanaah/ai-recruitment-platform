@@ -8,10 +8,12 @@ import type {
   HealthResponse,
   MatchJDRequest,
   MatchResponse,
+  RecruiterSessionResponse,
   SmartJDRequest,
   SmartJDResponse,
   UploadResponse
 } from "@/lib/api/types";
+import { getSupabaseAccessToken } from "@/lib/supabase/client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -19,6 +21,25 @@ function buildUrl(path: string) {
   const base = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
   const withSlash = path.startsWith("/") ? path : `/${path}`;
   return `${base}${withSlash}`;
+}
+
+async function resolveAuthToken(explicitToken?: string) {
+  const token = explicitToken ?? (await getSupabaseAccessToken());
+  if (!token) {
+    throw new Error("Sign in required.");
+  }
+  return token;
+}
+
+async function buildAuthHeaders(
+  explicitToken?: string,
+  baseHeaders?: HeadersInit
+): Promise<HeadersInit> {
+  const token = await resolveAuthToken(explicitToken);
+  return {
+    ...baseHeaders,
+    Authorization: `Bearer ${token}`
+  };
 }
 
 async function parseJSON<T>(response: Response): Promise<T> {
@@ -32,7 +53,7 @@ async function parseJSON<T>(response: Response): Promise<T> {
         message = payload.detail[0].msg;
       }
     } catch {
-      // no-op fallback
+      // ignore JSON parsing failure
     }
     throw new Error(message);
   }
@@ -45,55 +66,69 @@ export async function checkHealth() {
   return parseJSON<HealthResponse>(response);
 }
 
-export async function uploadDocuments(files: File[]) {
+export async function getCurrentRecruiterSession(accessToken?: string) {
+  const response = await fetch(buildUrl("/api/v1/auth/me"), {
+    headers: await buildAuthHeaders(accessToken),
+    cache: "no-store"
+  });
+  return parseJSON<RecruiterSessionResponse>(response);
+}
+
+export async function uploadDocuments(files: File[], accessToken?: string) {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
 
   const response = await fetch(buildUrl("/api/v1/documents/upload"), {
     method: "POST",
+    headers: await buildAuthHeaders(accessToken),
     body: formData
   });
 
   return parseJSON<UploadResponse>(response);
 }
 
-export async function matchJobDescription(payload: MatchJDRequest) {
+export async function matchJobDescription(payload: MatchJDRequest, accessToken?: string) {
   const response = await fetch(buildUrl("/api/v1/match-jd"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
 
   return parseJSON<MatchResponse>(response);
 }
 
-export async function generateSmartJobDescription(payload: SmartJDRequest) {
+export async function generateSmartJobDescription(payload: SmartJDRequest, accessToken?: string) {
   const response = await fetch(buildUrl("/api/v1/jd/generate"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
 
   return parseJSON<SmartJDResponse>(response);
 }
 
-export async function listCandidates() {
-  const response = await fetch(buildUrl("/api/v1/candidates"), { cache: "no-store" });
+export async function listCandidates(accessToken?: string) {
+  const response = await fetch(buildUrl("/api/v1/candidates"), {
+    headers: await buildAuthHeaders(accessToken),
+    cache: "no-store"
+  });
   return parseJSON<CandidateProfile[]>(response);
 }
 
-export async function deleteCandidate(candidateId: string) {
+export async function deleteCandidate(candidateId: string, accessToken?: string) {
   const response = await fetch(buildUrl(`/api/v1/candidates/${candidateId}`), {
-    method: "DELETE"
+    method: "DELETE",
+    headers: await buildAuthHeaders(accessToken)
   });
 
   return parseJSON<DeleteCandidateResponse>(response);
 }
 
-export async function deleteDocumentFile(fileName: string) {
+export async function deleteDocumentFile(fileName: string, accessToken?: string) {
   const encoded = encodeURIComponent(fileName);
   const response = await fetch(buildUrl(`/api/v1/documents/file/${encoded}`), {
-    method: "DELETE"
+    method: "DELETE",
+    headers: await buildAuthHeaders(accessToken)
   });
 
   return parseJSON<DeleteFileResponse>(response);
@@ -144,13 +179,17 @@ function consumeSSEBlock(block: string, handlers: ChatStreamHandlers) {
   }
 }
 
-export async function streamChatAnswer(payload: ChatAskPayload, handlers: ChatStreamHandlers) {
+export async function streamChatAnswer(
+  payload: ChatAskPayload,
+  handlers: ChatStreamHandlers,
+  accessToken?: string
+) {
   const response = await fetch(buildUrl("/api/v1/chat/ask"), {
     method: "POST",
-    headers: {
+    headers: await buildAuthHeaders(accessToken, {
       "Content-Type": "application/json",
       Accept: "text/event-stream"
-    },
+    }),
     body: JSON.stringify(payload)
   });
 

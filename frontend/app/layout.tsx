@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import "@fontsource/dm-sans/400.css";
-import "@fontsource/dm-sans/500.css";
-import "@fontsource/dm-sans/700.css";
-import "@fontsource/syne/600.css";
-import "@fontsource/syne/700.css";
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/inter/700.css";
 import { Toaster } from "sonner";
+
+import { AuthProvider } from "@/components/providers/auth-provider";
 
 import "./globals.css";
 
@@ -22,12 +23,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
         <Toaster
           richColors
           position="top-right"
           toastOptions={{
-            className: "!border-white/10 !bg-[#10131a] !text-white !shadow-[0_0_50px_rgba(108,99,255,0.2)]"
+            className:
+              "!border !border-slate-200 !bg-white !text-slate-950 !shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
           }}
         />
       </body>

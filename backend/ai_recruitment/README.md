@@ -1,100 +1,71 @@
-# AI Recruitment Intelligence Backend
+# TalentCore AI Backend
 
-FastAPI backend for CV ingestion, RAG chat, and JD matching using SQLite + FAISS.
+FastAPI backend for recruiter-scoped CV ingestion, RAG chat, Smart JD generation, and JD matching using Supabase Postgres + pgvector.
 
 ## Stack
 - Python 3.11+
 - FastAPI
-- LangChain
-- FAISS (local vector index)
-- Sentence-transformers embeddings + OpenAI chat model (configurable)
-- SQLite (structured candidate profiles)
+- Supabase Auth
+- Supabase Postgres
+- pgvector
+- sentence-transformers/all-MiniLM-L6-v2
+- OpenAI chat model
 - Pydantic v2
 
-## Run
+## Setup
 ```bash
 cd backend/ai_recruitment
 pip install -r requirements.txt
-uvicorn app.main:app --reload
 ```
 
-## Streamlit UI
-Run the full UI:
-```bash
-cd backend/ai_recruitment
-streamlit run streamlit_app.py
+Apply the Supabase schema:
+```sql
+-- run backend/ai_recruitment/schema.sql in the Supabase SQL editor
 ```
 
-The UI includes:
-- Multi-file CV upload (`.pdf`, `.docx`, `.txt`)
-- Chat with SSE token streaming
-- JD matching with score breakdown
-- Candidate listing and delete
-
-## Environment (.env)
+Configure environment variables:
 ```env
-OPENAI_API_KEY=your_key
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+OPENAI_API_KEY=
 OPENAI_CHAT_MODEL=gpt-4o
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-SQLITE_URL=sqlite:///./data/candidates.db
-FAISS_INDEX_PATH=./data/faiss_index
 CHUNK_SIZE=900
 CHUNK_OVERLAP=120
 RAG_TOP_K=5
 MATCH_RETRIEVAL_K=50
+CORS_ALLOW_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
 ```
 
-Notes:
-- `DATABASE_URL` is also accepted for backward compatibility.
-- `OPENAI_EMBEDDING_MODEL` is accepted as a legacy alias for backward compatibility.
-
-## APIs
-Base path: `/api/v1`
-
-1. `POST /documents/upload`
-- Multipart field: `files` (multiple)
-- Supported: `.pdf`, `.docx`, `.txt`
-- Stores chunks in FAISS and structured profiles in SQLite
-- Swagger behavior:
-  - Click `POST /api/v1/documents/upload`
-  - Click `Try it out`
-  - You will see a `Choose Files` button (not `Add string item`)
-  - Select one or more files and click `Execute`
-
-2. `POST /chat/ask`
-- RAG answer streaming via SSE events: `token`, `sources`, `done`
-
-3. `POST /match-jd`
-- Returns parsed JD and top 3 candidates with weighted score breakdown
-
-4. `POST /jd/generate`
-- Accepts a short hiring brief such as `Backend engineer for fintech startup`
-- Returns a structured JD with:
-  - required skills
-  - preferred skills
-  - matching keywords
-  - optimized JD copy for better matching
-  - optional salary suggestion
-
-5. `GET /candidates`
-- Returns all structured candidate profiles
-
-6. `DELETE /candidates/{candidate_id}`
-- Deletes from SQLite and FAISS
-
-7. `DELETE /documents/file/{file_name}`
-- Deletes all candidates and vectors associated with the uploaded file name
-
-## Quick cURL upload
+Run:
 ```bash
-curl -X POST "http://127.0.0.1:8000/api/v1/documents/upload" \
-  -H "accept: application/json" \
-  -F "files=@resume1.pdf" \
-  -F "files=@resume2.pdf"
+uvicorn app.main:app --reload
 ```
 
-## Quick cURL delete by file
-```bash
-curl -X DELETE "http://127.0.0.1:8000/api/v1/documents/file/resume1.pdf" \
-  -H "accept: application/json"
+## API Base
+`/api/v1`
+
+## Endpoints
+- `GET /auth/me`
+- `POST /documents/upload`
+- `DELETE /documents/file/{file_name}`
+- `POST /chat/ask`
+- `POST /match-jd`
+- `POST /jd/generate`
+- `GET /candidates`
+- `GET /candidates/{candidate_id}`
+- `PATCH /candidates/{candidate_id}`
+- `DELETE /candidates/{candidate_id}`
+- `GET /chunks`
+- `GET /chunks/{chunk_id}`
+- `POST /chunks`
+- `PATCH /chunks/{chunk_id}`
+- `DELETE /chunks/{chunk_id}`
+- `POST /chunks/search`
+- `GET /health`
+
+## Auth
+Send the Supabase access token in the `Authorization` header:
+```http
+Authorization: Bearer <supabase_access_token>
 ```

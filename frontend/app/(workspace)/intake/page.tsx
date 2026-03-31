@@ -2,7 +2,7 @@
 
 import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, FileStack, FolderOpen, Trash2, UploadCloud } from "lucide-react";
+import { Download, Eye, FileStack, FolderOpen, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
@@ -10,7 +10,6 @@ import { PageHeader } from "@/components/common/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteDocumentFile, listCandidates, uploadDocuments } from "@/lib/api/client";
 import type { CandidateProfile, UploadResponse } from "@/lib/api/types";
@@ -34,24 +33,21 @@ interface FileHistoryRow {
 }
 
 const statusProgress: Record<UploadStatus, number> = {
-  pending: 5,
+  pending: 0,
   uploading: 28,
-  extracting: 56,
+  extracting: 58,
   indexing: 82,
   done: 100,
   error: 100
 };
 
-const statusMeta: Record<
-  UploadStatus,
-  { label: string; badgeVariant: "outline" | "teal" | "warning" }
-> = {
-  pending: { label: "Pending", badgeVariant: "outline" },
-  uploading: { label: "Uploading", badgeVariant: "outline" },
-  extracting: { label: "Extracting", badgeVariant: "outline" },
-  indexing: { label: "Indexing", badgeVariant: "outline" },
-  done: { label: "Indexed", badgeVariant: "teal" },
-  error: { label: "Error", badgeVariant: "warning" }
+const statusMeta: Record<UploadStatus, { label: string; variant: "outline" | "teal" | "warning" }> = {
+  pending: { label: "Pending", variant: "outline" },
+  uploading: { label: "Uploading", variant: "outline" },
+  extracting: { label: "Extracting", variant: "outline" },
+  indexing: { label: "Indexing", variant: "outline" },
+  done: { label: "Indexed", variant: "teal" },
+  error: { label: "Failed", variant: "warning" }
 };
 
 function uniqueId() {
@@ -59,16 +55,34 @@ function uniqueId() {
 }
 
 function groupHistory(candidates: CandidateProfile[]): FileHistoryRow[] {
-  const grouped = new Map<string, number>();
+  const grouped = new Map<string, { count: number; latest: string }>();
+
   candidates.forEach((candidate) => {
-    grouped.set(candidate.file_name, (grouped.get(candidate.file_name) ?? 0) + 1);
+    const existing = grouped.get(candidate.file_name);
+    const createdAt = candidate.created_at ?? new Date().toISOString();
+
+    if (!existing) {
+      grouped.set(candidate.file_name, { count: 1, latest: createdAt });
+      return;
+    }
+
+    grouped.set(candidate.file_name, {
+      count: existing.count + 1,
+      latest: new Date(createdAt) > new Date(existing.latest) ? createdAt : existing.latest
+    });
   });
 
-  return Array.from(grouped.entries()).map(([fileName, count], index) => ({
-    fileName,
-    candidatesExtracted: count,
-    lastSeen: new Date(Date.now() - index * 43200000).toISOString()
-  }));
+  return Array.from(grouped.entries())
+    .map(([fileName, value]) => ({
+      fileName,
+      candidatesExtracted: value.count,
+      lastSeen: value.latest
+    }))
+    .sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 export default function IntakePage() {
@@ -78,6 +92,7 @@ export default function IntakePage() {
   const [history, setHistory] = useState<FileHistoryRow[]>([]);
   const [summary, setSummary] = useState<UploadResponse | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const queueRef = useRef<UploadItem[]>([]);
 
   const refreshHistory = async () => {
     try {
@@ -91,45 +106,74 @@ export default function IntakePage() {
   };
 
   useEffect(() => {
-    refreshHistory();
+    queueRef.current = queue;
+  }, [queue]);
+
+  useEffect(() => {
+    void refreshHistory();
     return () => {
-      queue.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      queueRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addFiles = (files: FileList | File[]) => {
-    const supported = Array.from(files).filter((file) => /\.(pdf|docx|txt)$/i.test(file.name));
-    if (supported.length === 0) {
-      toast.error("Only PDF, DOCX, and TXT files are supported.");
+  const queueStats = useMemo(
+    () => ({
+      total: queue.length,
+      completed: queue.filter((item) => item.status === "done").length,
+      errors: queue.filter((item) => item.status === "error").length
+    }),
+    [queue]
+  );
+
+  const addFilesToQueue = (files: FileList | File[]) => {
+    const nextFiles = Array.from(files).filter((file) => {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      return !queue.some((item) => `${item.file.name}-${item.file.size}-${item.file.lastModified}` === key);
+    });
+
+    if (nextFiles.length === 0) {
       return;
     }
 
-    const existingNames = new Set(queue.map((item) => item.file.name));
-    const nextItems = supported.map((file) => ({
-      id: uniqueId(),
-      file,
-      status: "pending" as UploadStatus,
-      previewUrl: URL.createObjectURL(file)
-    })).filter((item) => !existingNames.has(item.file.name));
+    setQueue((current) => [
+      ...nextFiles.map((file) => ({
+        id: uniqueId(),
+        file,
+        status: "pending" as const,
+        previewUrl: URL.createObjectURL(file)
+      })),
+      ...current
+    ]);
+  };
 
-    if (nextItems.length === 0) {
-      toast.error("These files are already in the queue.");
+  const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files?.length) {
       return;
     }
-
-    setQueue((current) => [...current, ...nextItems]);
+    addFilesToQueue(event.target.files);
+    event.target.value = "";
   };
 
-  const onInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      addFiles(event.target.files);
-    }
-  };
-
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    addFiles(event.dataTransfer.files);
+    if (!event.dataTransfer.files.length) {
+      return;
+    }
+    addFilesToQueue(event.dataTransfer.files);
+  };
+
+  const removeQueueItem = (itemId: string) => {
+    setQueue((current) => {
+      const target = current.find((item) => item.id === itemId);
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return current.filter((item) => item.id !== itemId);
+    });
+  };
+
+  const setAllStatuses = (status: UploadStatus) => {
+    setQueue((current) => current.map((item) => ({ ...item, status, error: status === "error" ? item.error : undefined })));
   };
 
   const runUpload = async () => {
@@ -139,299 +183,262 @@ export default function IntakePage() {
 
     setUploading(true);
     setSummary(null);
-    setQueue((current) => current.map((item) => ({ ...item, status: "uploading", error: undefined })));
-
-    window.setTimeout(() => {
-      setQueue((current) => current.map((item) => ({ ...item, status: "extracting" })));
-    }, 350);
-
-    window.setTimeout(() => {
-      setQueue((current) => current.map((item) => ({ ...item, status: "indexing" })));
-    }, 900);
+    setAllStatuses("uploading");
 
     try {
       const response = await uploadDocuments(queue.map((item) => item.file));
       setSummary(response);
+      await sleep(180);
+      setAllStatuses("extracting");
+      await sleep(180);
+      setAllStatuses("indexing");
+      await sleep(220);
+
       setQueue((current) =>
         current.map((item) => {
-          const extracted = response.candidates.find((candidate) => candidate.file_name === item.file.name);
-          const failed = response.errors.find((error) => error.includes(item.file.name));
+          const candidate = response.candidates.find((entry) => entry.file_name === item.file.name);
+          const failed = response.errors.some((error) => error.toLowerCase().includes(item.file.name.toLowerCase()));
           return {
             ...item,
             status: failed ? "error" : "done",
-            candidateName: extracted?.name,
-            error: failed
+            candidateName: candidate?.name,
+            error: failed ? "Processing failed" : undefined
           };
         })
       );
-      toast.success(response.message || "Batch processed");
-      refreshHistory();
+
+      await refreshHistory();
+      toast.success(response.message || "Files processed");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Upload failed";
-      setQueue((current) => current.map((item) => ({ ...item, status: "error", error: message })));
-      toast.error(message);
+      setQueue((current) =>
+        current.map((item) => ({
+          ...item,
+          status: "error",
+          error: error instanceof Error ? error.message : "Upload failed"
+        }))
+      );
+      toast.error(error instanceof Error ? error.message : "Unable to upload documents");
     } finally {
       setUploading(false);
     }
   };
 
-  const removeQueuedFile = (id: string) => {
-    setQueue((current) => {
-      const target = current.find((item) => item.id === id);
-      if (target) {
-        URL.revokeObjectURL(target.previewUrl);
-      }
-      return current.filter((item) => item.id !== id);
-    });
+  const removeHistoryFile = async (fileName: string) => {
+    try {
+      await deleteDocumentFile(fileName);
+      setHistory((current) => current.filter((item) => item.fileName !== fileName));
+      toast.success(`Removed ${fileName}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to remove file");
+    }
   };
-
-  const previewCandidates = useMemo(() => summary?.candidates ?? [], [summary]);
 
   return (
     <div className="grid gap-6">
       <PageHeader
-        eyebrow="Intake"
-        title="Bring candidate documents into TalentCore AI"
-        description="Upload batches, monitor processing states, preview extracted candidates, and manage source file history without leaving the intake console."
+        eyebrow="Document Intake"
+        title="Bring resume files into the same clean recruiter workflow"
+        description="Upload CVs, monitor processing states, and manage your intake history without breaking the visual system of the new landing experience."
         action={
           <Button onClick={runUpload} disabled={queue.length === 0 || uploading}>
-            {uploading ? "Processing batch..." : "Start ingestion"}
+            <UploadCloud className="h-4 w-4" />
+            {uploading ? "Processing..." : "Upload files"}
           </Button>
         }
       />
 
-      <Card>
-        <CardContent className="p-6 md:p-7">
-          <div
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={onDrop}
-            className="grid gap-6 rounded-[30px] border border-dashed border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 md:grid-cols-[1.2fr,0.8fr] md:p-8"
-          >
-            <div className="flex flex-col justify-center">
-              <div className="grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.05] text-primary">
-                <UploadCloud className="h-6 w-6" />
+      <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
+        <Card>
+          <CardContent className="p-6 md:p-8">
+            <motion.div
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.2 }}
+              onDrop={handleDrop}
+              onDragOver={(event) => event.preventDefault()}
+              className="rounded-[30px] border border-dashed border-orange-200 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-8 text-center"
+            >
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-[24px] bg-white text-orange-600 shadow-[0_16px_34px_rgba(249,115,22,0.12)]">
+                <UploadCloud className="h-7 w-7" />
               </div>
-              <p className="font-display mt-5 text-2xl text-white md:text-3xl">Upload candidate files</p>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/54">
-                Drag documents into the intake zone or browse from your system. TalentCore will upload,
-                extract, and index every supported resume against your backend workflow.
+              <h3 className="font-display mt-5 text-2xl font-semibold text-slate-950">Upload CV files</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Drag and drop files here or choose files manually. Supported formats: PDF, DOCX, and TXT.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button type="button" onClick={() => inputRef.current?.click()}>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <Button variant="secondary" onClick={() => inputRef.current?.click()}>
                   <FolderOpen className="h-4 w-4" />
                   Choose files
                 </Button>
-                <Badge variant="outline" className="normal-case tracking-normal text-xs">
-                  PDF, DOCX, TXT
-                </Badge>
+                <Button onClick={runUpload} disabled={queue.length === 0 || uploading}>
+                  Start processing
+                </Button>
               </div>
               <input
                 ref={inputRef}
-                aria-label="Upload candidate files"
                 type="file"
+                accept=".pdf,.docx,.txt"
                 multiple
                 className="hidden"
-                onChange={onInputChange}
+                onChange={handleFileInput}
               />
+            </motion.div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Batch summary</CardTitle>
+            <CardDescription>Live queue summary for the files currently staged in this browser.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              <div className="rounded-[22px] border border-slate-200 bg-white p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Queued</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{queueStats.total}</p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 bg-white p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Indexed</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{queueStats.completed}</p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 bg-white p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Errors</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{queueStats.errors}</p>
+              </div>
             </div>
 
-            <div className="grid gap-3 md:grid-rows-3">
-              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Queued files</p>
-                <p className="mt-3 font-display text-3xl text-white">{queue.length}</p>
-              </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Last batch</p>
-                <p className="mt-3 text-sm text-white/60">
-                  {summary ? `${summary.files_processed} files processed` : "No batch processed yet"}
-                </p>
-              </div>
-              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Flow</p>
-                <p className="mt-3 text-sm text-white/60">Uploading, extracting, indexing, and saving to your backend.</p>
-              </div>
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">
+              {summary ? (
+                <div className="space-y-2">
+                  <p className="font-medium text-slate-950">{summary.message}</p>
+                  <p>
+                    {summary.files_processed} files processed • {summary.total_chunks} chunks stored
+                  </p>
+                  {summary.errors.length > 0 ? <p>{summary.errors.length} file errors returned from the backend.</p> : null}
+                </div>
+              ) : (
+                <p>Upload a batch to see the backend response summary for processed files and chunks.</p>
+              )}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Active upload queue</CardTitle>
-            <CardDescription>Each document shows file details, progress state, and local actions.</CardDescription>
+            <CardTitle>Upload queue</CardTitle>
+            <CardDescription>Preview local files, monitor status, and remove items before or after processing.</CardDescription>
           </CardHeader>
           <CardContent>
             {queue.length === 0 ? (
               <EmptyState
-                icon={UploadCloud}
+                icon={FileStack}
                 title="No files in queue"
-                description="Add resumes to see per-file progress, local preview actions, and ingestion status updates."
+                description="Choose files or drag resumes into the intake area to start a new upload batch."
               />
             ) : (
-              <ScrollArea className="h-[500px] pr-3">
-                <div className="space-y-3">
-                  {queue.map((item, index) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.04 }}
-                      className="rounded-[24px] border border-white/10 bg-white/[0.03] p-4"
-                    >
+              <div className="max-h-[620px] space-y-4 overflow-y-auto pr-1">
+                {queue.map((item) => {
+                  const status = statusMeta[item.status];
+                  return (
+                    <div key={item.id} className="rounded-[26px] border border-slate-200 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-white">{item.file.name}</p>
-                          <p className="mt-1 text-sm text-white/48">
-                            {formatFileSize(item.file.size)} • {item.file.type || "Unknown type"}
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-semibold text-slate-950">{item.file.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {formatFileSize(item.file.size)} • {item.file.type || "Document file"}
                           </p>
-                          {item.candidateName && (
-                            <p className="mt-2 text-sm text-[#8DF5DF]">Candidate: {item.candidateName}</p>
-                          )}
-                          {item.error && <p className="mt-2 text-sm text-red-300">{item.error}</p>}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={statusMeta[item.status].badgeVariant}
-                            className="px-2.5 py-1 normal-case tracking-normal text-[10px] sm:text-[11px]"
-                          >
-                            {statusMeta[item.status].label}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => window.open(item.previewUrl, "_blank", "noopener,noreferrer")}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => removeQueuedFile(item.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Badge variant={status.variant} className="normal-case tracking-normal">
+                          {status.label}
+                        </Badge>
                       </div>
-                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/6">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${statusProgress[item.status]}%` }}
-                          transition={{ duration: 0.5 }}
-                          className="h-full rounded-full bg-[linear-gradient(90deg,#6C63FF,#00D4AA)]"
+
+                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full ${item.status === "error" ? "bg-rose-400" : "bg-[linear-gradient(90deg,#f97316,#fb923c)]"}`}
+                          style={{ width: `${statusProgress[item.status]}%` }}
                         />
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </ScrollArea>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {item.candidateName ? (
+                          <Badge className="normal-case tracking-normal">{item.candidateName}</Badge>
+                        ) : null}
+                        {item.error ? (
+                          <Badge variant="warning" className="normal-case tracking-normal">
+                            {item.error}
+                          </Badge>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap gap-3">
+                        <Button variant="secondary" onClick={() => window.open(item.previewUrl, "_blank", "noopener,noreferrer")}>
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Button>
+                        <Button variant="outline" asChild>
+                          <a href={item.previewUrl} download={item.file.name}>
+                            <Download className="h-4 w-4" />
+                            Download
+                          </a>
+                        </Button>
+                        <Button variant="outline" onClick={() => removeQueueItem(item.id)}>
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
 
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Batch upload summary</CardTitle>
-              <CardDescription>Results returned from the backend after the latest ingestion run.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Files</p>
-                  <p className="mt-3 font-display text-3xl text-white">{summary?.files_processed ?? 0}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Candidates</p>
-                  <p className="mt-3 font-display text-3xl text-white">{summary?.processed_count ?? 0}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Errors</p>
-                  <p className="mt-3 font-display text-3xl text-white">{summary?.failed_count ?? 0}</p>
-                </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>File history</CardTitle>
+            <CardDescription>Uploaded file groups already stored in the backend for this recruiter.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingHistory ? (
+              <div className="grid gap-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton key={index} className="h-20 rounded-[22px]" />
+                ))}
               </div>
-
-              {previewCandidates.length > 0 && (
-                <div className="space-y-3">
-                  {previewCandidates.map((candidate) => (
-                    <div key={candidate.candidate_id} className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                      <p className="font-medium text-white">{candidate.name}</p>
-                      <p className="mt-1 text-sm text-white/48">{candidate.current_position || "Position not extracted"}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {candidate.skills.slice(0, 4).map((skill) => (
-                          <Badge key={skill} variant="outline" className="normal-case tracking-normal text-[10px] sm:text-[11px]">
-                            {skill}
-                          </Badge>
-                        ))}
+            ) : history.length === 0 ? (
+              <EmptyState
+                icon={FolderOpen}
+                title="No stored files yet"
+                description="Once documents are processed successfully, they will appear in this history list."
+              />
+            ) : (
+              <div className="max-h-[620px] space-y-3 overflow-y-auto pr-1">
+                {history.map((row) => (
+                  <div key={row.fileName} className="rounded-[24px] border border-slate-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-950">{row.fileName}</p>
+                        <p className="mt-1 text-sm text-slate-500">Last activity: {formatDate(row.lastSeen)}</p>
                       </div>
+                      <Badge variant="secondary" className="normal-case tracking-normal">
+                        {row.candidatesExtracted} candidates
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>File history</CardTitle>
-              <CardDescription>Previously indexed source files currently represented in SQLite and FAISS.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingHistory ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((item) => (
-                    <Skeleton key={item} className="h-20 w-full" />
-                  ))}
-                </div>
-              ) : history.length === 0 ? (
-                <EmptyState
-                  icon={FileStack}
-                  title="No file history"
-                  description="Once resumes are ingested, the history table will show source files and extracted candidate counts."
-                />
-              ) : (
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.02]">
-                  <div className="grid grid-cols-[minmax(0,1fr)_130px_120px] gap-3 border-b border-white/8 px-4 py-3 text-xs uppercase tracking-[0.2em] text-white/34">
-                    <span>File</span>
-                    <span>Candidates</span>
-                    <span>Action</span>
+                    <div className="mt-4 flex justify-end gap-3">
+                      <Button variant="outline" onClick={() => void removeHistoryFile(row.fileName)}>
+                        <Trash2 className="h-4 w-4" />
+                        Delete file
+                      </Button>
+                    </div>
                   </div>
-                  <ScrollArea className="h-[360px]">
-                    <div className="divide-y divide-white/8">
-                      {history.map((row) => (
-                        <div
-                          key={row.fileName}
-                          className="grid grid-cols-[minmax(0,1fr)_130px_120px] items-center gap-3 px-4 py-4"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-white">{row.fileName}</p>
-                            <p className="mt-1 text-sm text-white/48">{formatDate(row.lastSeen)}</p>
-                          </div>
-                          <div>
-                            <Badge variant="outline" className="w-fit px-2.5 py-1 normal-case tracking-normal text-[10px] sm:text-[11px]">
-                              {row.candidatesExtracted} extracted
-                            </Badge>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            className="justify-start px-0 text-white/72 hover:text-white"
-                            onClick={async () => {
-                              try {
-                                await deleteDocumentFile(row.fileName);
-                                toast.success(`${row.fileName} removed`);
-                                refreshHistory();
-                              } catch (error) {
-                                toast.error(error instanceof Error ? error.message : "Unable to delete file");
-                              }
-                            }}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

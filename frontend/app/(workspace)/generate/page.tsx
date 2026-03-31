@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { generateSmartJobDescription } from "@/lib/api/client";
-import { incrementStoredNumber } from "@/lib/storage";
 import type { SmartJDResponse } from "@/lib/api/types";
-import { exportHtmlToPrintWindow } from "@/lib/utils";
+import { incrementStoredNumber } from "@/lib/storage";
+import { exportHtmlToPrintWindow, formatDate } from "@/lib/utils";
 
 interface HistoryItem extends SmartJDResponse {
   id: string;
@@ -91,171 +91,280 @@ export default function GeneratePage() {
 
     return [
       generated.title,
+      `Seniority: ${generated.seniority}`,
+      `Industry: ${generated.industry}`,
+      `Work model: ${generated.work_model}`,
+      `Employment type: ${generated.employment_type}`,
+      `Minimum experience: ${generated.min_experience} years`,
+      `Education: ${generated.education_required}`,
       "",
+      "Role summary",
+      generated.role_summary,
+      "",
+      "Responsibilities",
+      ...generated.responsibilities.map((item) => `- ${item}`),
+      "",
+      "Required skills",
+      ...generated.required_skills.map((item) => `- ${item}`),
+      "",
+      "Preferred skills",
+      ...generated.preferred_skills.map((item) => `- ${item}`),
+      "",
+      "Keywords",
+      generated.matching_keywords.join(", "),
+      "",
+      "Optimized job description",
       generated.optimized_job_description,
       "",
-      `Required skills: ${generated.required_skills.join(", ")}`,
-      `Preferred skills: ${generated.preferred_skills.join(", ")}`,
-      `Matching keywords: ${generated.matching_keywords.join(", ")}`
+      generated.salary_suggestion
+        ? `Salary suggestion: ${generated.salary_suggestion.currency} ${generated.salary_suggestion.min_amount ?? ""}-${generated.salary_suggestion.max_amount ?? ""} ${generated.salary_suggestion.period}`
+        : "Salary suggestion: not included"
     ].join("\n");
   }, [generated]);
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="space-y-6">
-        <PageHeader
-          eyebrow="Generator"
-          title="Create matching-optimized job descriptions"
-          description="Start from a short brief, then let TalentCore generate structured recruiter copy, hiring signals, and search keywords."
-        />
+  const useForMatching = () => {
+    if (!generated) {
+      return;
+    }
 
+    window.localStorage.setItem("tc_match_draft", generated.optimized_job_description);
+    window.location.href = "/match";
+  };
+
+  return (
+    <div className="grid gap-6">
+      <PageHeader
+        eyebrow="Smart JD Generator"
+        title="Create matching-ready job descriptions in the same light product system"
+        description="Turn a short hiring brief into a structured JD with required skills, preferred skills, optimized matching text, and optional salary guidance."
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <History className="h-4 w-4 text-primary" />
+              <History className="h-4 w-4 text-orange-600" />
               JD history
             </CardTitle>
-            <CardDescription>Previously generated JDs stored in this browser.</CardDescription>
+            <CardDescription>Recent generated outputs saved in this browser session.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {history.length === 0 ? (
-              <p className="text-sm text-white/48">No generated JDs yet.</p>
-            ) : (
-              history.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setGenerated(item);
-                    setRoleBrief(item.role_brief);
-                    setSeniority(item.seniority || "Mid-level");
-                    setIndustry(item.industry || "Fintech");
-                    setWorkModel(item.work_model || "Remote");
-                  }}
-                  className="w-full rounded-[22px] border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.05]"
-                >
-                  <p className="font-medium text-white">{item.title || item.role_brief}</p>
-                  <p className="mt-1 text-xs text-white/42">{item.created_at}</p>
-                </button>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Generate a Smart JD</CardTitle>
-            <CardDescription>Use the options panel to give the generator more context before creating recruiter-ready output.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <Textarea value={roleBrief} onChange={(event) => setRoleBrief(event.target.value)} placeholder="Backend engineer for a fintech startup" className="min-h-32" />
-            <div className="grid gap-4 md:grid-cols-3">
-              <select value={seniority} onChange={(event) => setSeniority(event.target.value)} className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white">
-                <option className="bg-[#0f1218]">Junior</option>
-                <option className="bg-[#0f1218]">Mid-level</option>
-                <option className="bg-[#0f1218]">Senior</option>
-                <option className="bg-[#0f1218]">Lead</option>
-              </select>
-              <select value={industry} onChange={(event) => setIndustry(event.target.value)} className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white">
-                <option className="bg-[#0f1218]">Fintech</option>
-                <option className="bg-[#0f1218]">SaaS</option>
-                <option className="bg-[#0f1218]">Healthtech</option>
-                <option className="bg-[#0f1218]">E-commerce</option>
-              </select>
-              <select value={workModel} onChange={(event) => setWorkModel(event.target.value)} className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white">
-                <option className="bg-[#0f1218]">Remote</option>
-                <option className="bg-[#0f1218]">Hybrid</option>
-                <option className="bg-[#0f1218]">Onsite</option>
-              </select>
+          <CardContent>
+            <div className="max-h-[700px] space-y-3 overflow-y-auto pr-1">
+              {history.length === 0 ? (
+                <p className="text-sm leading-7 text-slate-600">Generated JDs will appear here after your first successful run.</p>
+              ) : (
+                history.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setGenerated(item)}
+                    className="w-full rounded-[24px] border border-slate-200 bg-white p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/60"
+                  >
+                    <p className="line-clamp-1 text-sm font-semibold text-slate-950">{item.title}</p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{item.role_brief}</p>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-400">{formatDate(item.created_at)}</p>
+                  </button>
+                ))
+              )}
             </div>
-            <label className="flex items-center gap-2 text-sm text-white/70">
-              <input type="checkbox" checked={includeSalary} onChange={(event) => setIncludeSalary(event.target.checked)} className="h-4 w-4 rounded accent-[#6C63FF]" />
-              Show salary suggestion
-            </label>
-            <Button onClick={runGenerator} disabled={!roleBrief.trim() || loading}>
-              {loading ? "Generating JD..." : "Generate JD"}
-              <WandSparkles className="h-4 w-4" />
-            </Button>
           </CardContent>
         </Card>
 
-        {generated && (
+        <div className="grid gap-6">
           <Card>
             <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Generator input</CardTitle>
+              <CardDescription>Provide the recruiter brief and set the generation options.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <Textarea
+                value={roleBrief}
+                onChange={(event) => setRoleBrief(event.target.value)}
+                placeholder="Backend engineer for a fintech startup"
+                className="min-h-[180px]"
+              />
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="grid gap-2 text-sm text-slate-600">
+                  <span>Seniority</span>
+                  <select
+                    value={seniority}
+                    onChange={(event) => setSeniority(event.target.value)}
+                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-950"
+                  >
+                    <option>Junior</option>
+                    <option>Mid-level</option>
+                    <option>Senior</option>
+                    <option>Lead</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm text-slate-600">
+                  <span>Industry</span>
+                  <select
+                    value={industry}
+                    onChange={(event) => setIndustry(event.target.value)}
+                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-950"
+                  >
+                    <option>Fintech</option>
+                    <option>SaaS</option>
+                    <option>Healthcare</option>
+                    <option>E-commerce</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm text-slate-600">
+                  <span>Work model</span>
+                  <select
+                    value={workModel}
+                    onChange={(event) => setWorkModel(event.target.value)}
+                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-950"
+                  >
+                    <option>Remote</option>
+                    <option>Hybrid</option>
+                    <option>Onsite</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="flex items-center gap-3 rounded-[22px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={includeSalary}
+                  onChange={(event) => setIncludeSalary(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 accent-orange-500"
+                />
+                Include salary suggestion
+              </label>
+
+              <Button onClick={runGenerator} disabled={loading || !roleBrief.trim()}>
+                <WandSparkles className="h-4 w-4" />
+                {loading ? "Generating..." : "Generate JD"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <CardTitle>{generated.title}</CardTitle>
-                  <CardDescription>{generated.role_summary}</CardDescription>
+                  <CardTitle>Generated output</CardTitle>
+                  <CardDescription>Structured JD output ready for review, copy, export, or matching.</CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={async () => {
-                    await navigator.clipboard.writeText(generated.optimized_job_description);
-                    toast.success("JD copied to clipboard");
-                  }}>
-                    <Copy className="h-4 w-4" />
-                    Copy
-                  </Button>
-                  <Button variant="secondary" onClick={() => {
-                    window.localStorage.setItem("tc_match_draft", generated.optimized_job_description);
-                    window.location.href = "/match";
-                  }}>
-                    <Sparkles className="h-4 w-4" />
-                    Use for Matching
-                  </Button>
-                  <Button variant="outline" onClick={() => exportHtmlToPrintWindow("TalentCore Smart JD", printableText)}>
-                    <FileText className="h-4 w-4" />
-                    Export PDF
-                  </Button>
-                </div>
+                {generated ? <Badge className="normal-case tracking-normal">Ready</Badge> : null}
               </div>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Required skills</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {generated.required_skills.map((skill) => (
-                      <Badge key={skill} variant="teal">{skill}</Badge>
-                    ))}
+            <CardContent>
+              {!generated ? (
+                <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-7 text-slate-600">
+                  Run the generator to populate the structured JD output panel.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-2xl font-semibold text-slate-950">{generated.title}</p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        {generated.seniority} • {generated.industry} • {generated.work_model} • {generated.employment_type}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="secondary" onClick={() => navigator.clipboard.writeText(generated.optimized_job_description).then(() => toast.success("Copied to clipboard"))}>
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </Button>
+                      <Button variant="outline" onClick={useForMatching}>
+                        <Sparkles className="h-4 w-4" />
+                        Use for matching
+                      </Button>
+                      <Button variant="outline" onClick={() => exportHtmlToPrintWindow(generated.title, printableText)}>
+                        <FileText className="h-4 w-4" />
+                        Export PDF
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Preferred skills</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {generated.preferred_skills.map((skill) => (
-                      <Badge key={skill} variant="outline">{skill}</Badge>
-                    ))}
+
+                  <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Role summary</p>
+                    <p className="mt-3 text-sm leading-7 text-slate-700">{generated.role_summary}</p>
                   </div>
-                </div>
-              </div>
 
-              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.24em] text-white/35">Optimized keywords</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {generated.matching_keywords.map((keyword) => (
-                    <Badge key={keyword} variant="secondary">{keyword}</Badge>
-                  ))}
-                </div>
-              </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Required skills</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {generated.required_skills.map((skill) => (
+                          <Badge key={skill} className="normal-case tracking-normal">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Preferred skills</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {generated.preferred_skills.map((skill) => (
+                          <Badge key={skill} variant="outline" className="normal-case tracking-normal">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-white/72 whitespace-pre-line">
-                {generated.optimized_job_description}
-              </div>
+                  <div className="grid gap-4 lg:grid-cols-[1fr,0.8fr]">
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Responsibilities</p>
+                      <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
+                        {generated.responsibilities.map((item) => (
+                          <p key={item}>• {item}</p>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Optimized keywords</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {generated.matching_keywords.map((keyword) => (
+                          <Badge key={keyword} variant="secondary" className="normal-case tracking-normal">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
-              {generated.salary_suggestion && (
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-white/35">Salary suggestion</p>
-                  <p className="mt-3 text-white">
-                    {generated.salary_suggestion.currency} {generated.salary_suggestion.min_amount ?? "N/A"} - {generated.salary_suggestion.max_amount ?? "N/A"} per {generated.salary_suggestion.period}
-                  </p>
-                  <p className="mt-2 text-sm text-white/52">{generated.salary_suggestion.rationale}</p>
+                  <div className="rounded-[24px] border border-orange-100 bg-orange-50/60 p-5">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Optimized job description</p>
+                    <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-700">
+                      {generated.optimized_job_description}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Minimum experience</p>
+                      <p className="mt-3 text-lg font-semibold text-slate-950">{generated.min_experience} years</p>
+                    </div>
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Education</p>
+                      <p className="mt-3 text-lg font-semibold text-slate-950">{generated.education_required}</p>
+                    </div>
+                  </div>
+
+                  {generated.salary_suggestion ? (
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Salary suggestion</p>
+                      <p className="mt-3 text-lg font-semibold text-slate-950">
+                        {generated.salary_suggestion.currency} {generated.salary_suggestion.min_amount ?? ""} - {generated.salary_suggestion.max_amount ?? ""} {generated.salary_suggestion.period}
+                      </p>
+                      <p className="mt-3 text-sm leading-7 text-slate-600">{generated.salary_suggestion.rationale}</p>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </CardContent>
           </Card>
-        )}
+        </div>
       </div>
     </div>
   );

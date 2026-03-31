@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --font-body: "DM Sans", "Segoe UI", sans-serif;
-  --font-heading: "Syne", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-heading: "Inter", "Segoe UI", sans-serif;
   --background: 220 16% 5%;
   --foreground: 210 40% 98%;
   --card: 226 20% 10%;
   --card-foreground: 210 40% 98%;
   --popover: 228 20% 10%;
   --popover-foreground: 210 40% 98%;
-  --primary: 244 100% 69%;
+  --primary: 25 95% 53%;
   --primary-foreground: 0 0% 100%;
   --secondary: 221 18% 15%;
   --secondary-foreground: 210 40% 96%;
@@ -23,12 +23,12 @@
   --destructive-foreground: 0 0% 100%;
   --border: 220 18% 22%;
   --input: 222 19% 18%;
-  --ring: 244 100% 69%;
-  --chart-1: 244 100% 69%;
-  --chart-2: 165 100% 42%;
-  --chart-3: 199 100% 62%;
-  --chart-4: 272 71% 64%;
-  --chart-5: 42 96% 63%;
+  --ring: 25 95% 53%;
+  --chart-1: 25 95% 53%;
+  --chart-2: 31 97% 65%;
+  --chart-3: 38 92% 50%;
+  --chart-4: 17 80% 56%;
+  --chart-5: 43 96% 58%;
   --radius: 1.1rem;
 }
 
@@ -185,5 +185,62 @@ h6,
       0 0 0 1px rgba(255, 255, 255, 0.05),
       0 20px 60px rgba(10, 11, 13, 0.6),
       0 0 40px rgba(108, 99, 255, 0.12);
+  }
+
+  .marketing-shell {
+    background:
+      radial-gradient(circle at top left, rgba(255, 140, 66, 0.14), transparent 28%),
+      radial-gradient(circle at top right, rgba(255, 191, 102, 0.18), transparent 22%),
+      linear-gradient(180deg, #fffdf9 0%, #f8f4ee 100%);
+    color: #0f172a;
+  }
+
+  .marketing-card {
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 18px 40px rgba(251, 146, 60, 0.08);
+    backdrop-filter: blur(14px);
+  }
+
+  .marketing-glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.94));
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow:
+      0 8px 30px rgba(15, 23, 42, 0.08),
+      0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+    backdrop-filter: blur(18px);
+  }
+
+  .marketing-pill {
+    border: 1px solid #fed7aa;
+    background: linear-gradient(135deg, rgba(255, 237, 213, 0.95), rgba(255, 247, 237, 0.95));
+    color: #c2410c;
+  }
+
+  .marketing-primary-btn {
+    background: linear-gradient(135deg, #f97316, #fb923c);
+    color: white;
+    box-shadow:
+      0 12px 30px rgba(249, 115, 22, 0.22),
+      0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  }
+
+  .marketing-primary-btn:hover {
+    box-shadow:
+      0 16px 34px rgba(249, 115, 22, 0.28),
+      0 1px 0 rgba(255, 255, 255, 0.56) inset;
+  }
+
+  .marketing-secondary-btn {
+    background: rgba(255, 255, 255, 0.84);
+    color: #0f172a;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  .marketing-secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.96);
   }
 }

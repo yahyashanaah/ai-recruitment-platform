@@ -1,7 +1,20 @@
+export interface RecruiterProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  created_at?: string | null;
+  last_login?: string | null;
+}
+
+export interface RecruiterSessionResponse {
+  recruiter: RecruiterProfile;
+}
+
 export interface CandidateProfile {
   candidate_id: string;
   file_name: string;
   name: string;
+  linkedin?: string;
   phone_number: string;
   gmail: string;
   location: string;
@@ -11,6 +24,7 @@ export interface CandidateProfile {
   current_position: string;
   certifications: string[];
   raw_profile: Record<string, unknown>;
+  created_at?: string | null;
 }
 
 export interface UploadResponse {
@@ -62,7 +76,10 @@ export interface SkillOverlapBreakdown {
 }
 
 export interface MatchCandidate {
+  candidate_id: string;
   candidate_name: string;
+  file_name: string;
+  linkedin?: string;
   phone_number: string;
   gmail: string;
   location: string;
@@ -117,14 +134,14 @@ export interface MatchResponse {
 
 export interface DeleteCandidateResponse {
   candidate_id: string;
-  deleted_from_sqlite: boolean;
-  deleted_vectors: number;
+  deleted: boolean;
+  deleted_chunks: number;
 }
 
 export interface DeleteFileResponse {
   file_name: string;
   deleted_candidates: number;
-  deleted_vectors: number;
+  deleted_chunks: number;
 }
 
 export interface HealthResponse {

@@ -6,6 +6,7 @@ Extract a structured candidate profile from the CV text.
 
 Return valid JSON only with these keys exactly:
 - name
+- linkedin
 - phone_number
 - gmail
 - location

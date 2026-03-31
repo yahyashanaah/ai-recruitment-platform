@@ -19,7 +19,7 @@ function SheetOverlay({
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        "fixed inset-0 z-50 bg-[#050608]/75 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out",
+        "fixed inset-0 z-50 bg-slate-950/20 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out",
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ function SheetOverlay({
 }
 
 const sheetVariants = cva(
-  "fixed z-50 flex flex-col gap-4 border border-white/10 bg-[#0d1016]/96 p-6 shadow-[0_0_70px_rgba(108,99,255,0.18)] transition data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-50 flex flex-col gap-4 border border-slate-200 bg-[#fffdf9]/96 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.12)] transition data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
     variants: {
       side: {
@@ -57,7 +57,7 @@ function SheetContent({
       <SheetOverlay />
       <DialogPrimitive.Content className={cn(sheetVariants({ side }), className)} {...props}>
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full border border-white/10 p-2 text-white/58 transition hover:text-white">
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full border border-slate-200 p-2 text-slate-500 transition hover:text-slate-950">
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -71,14 +71,14 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn("font-display text-2xl font-semibold text-white", className)} {...props} />;
+  return <DialogPrimitive.Title className={cn("font-display text-2xl font-semibold text-slate-950", className)} {...props} />;
 }
 
 function SheetDescription({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
-  return <DialogPrimitive.Description className={cn("text-sm text-white/52", className)} {...props} />;
+  return <DialogPrimitive.Description className={cn("text-sm text-slate-600", className)} {...props} />;
 }
 
 function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {

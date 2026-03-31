@@ -27,11 +27,7 @@ class ScoringService:
 
         matched_skills = sorted(required_skills.intersection(candidate_skills))
         missing_skills = sorted(required_skills.difference(candidate_skills))
-
-        if required_skills:
-            skills_score = (len(matched_skills) / len(required_skills)) * 100
-        else:
-            skills_score = 100
+        skills_score = 100.0 if not required_skills else (len(matched_skills) / len(required_skills)) * 100
 
         skill_overlap = SkillOverlapBreakdown(
             matched_required_skills=len(matched_skills),
@@ -39,20 +35,9 @@ class ScoringService:
             overlap_percentage=round(skills_score, 2),
         )
 
-        experience_score = self._experience_score(
-            years=candidate.years_of_experience,
-            minimum=jd.min_experience,
-        )
-
-        education_score = self._education_score(
-            candidate_education=candidate.education,
-            required_education=jd.education_required,
-        )
-
-        certifications_score = self._certifications_score(
-            certifications=candidate.certifications,
-            nice_to_have=jd.nice_to_have_skills,
-        )
+        experience_score = self._experience_score(candidate.years_of_experience, jd.min_experience)
+        education_score = self._education_score(candidate.education, jd.education_required)
+        certifications_score = self._certifications_score(candidate.certifications, jd.nice_to_have_skills)
 
         overall_score = (
             (skills_score * self.SKILLS_WEIGHT)
@@ -68,17 +53,11 @@ class ScoringService:
             certifications_score=round(certifications_score, 2),
         )
 
-        reasoning = self._build_reasoning(
-            matched_skills=matched_skills,
-            missing_skills=missing_skills,
-            candidate_years=candidate.years_of_experience,
-            min_years=jd.min_experience,
-            education_score=education_score,
-            certifications_score=certifications_score,
-        )
-
         return CandidateMatchResponse(
+            candidate_id=candidate.candidate_id,
             candidate_name=candidate.name,
+            file_name=candidate.file_name,
+            linkedin=candidate.linkedin,
             phone_number=candidate.phone_number,
             gmail=candidate.gmail,
             location=candidate.location,
@@ -88,7 +67,14 @@ class ScoringService:
             skill_overlap=skill_overlap,
             education=candidate.education,
             overall_score=round(overall_score, 2),
-            reasoning=reasoning,
+            reasoning=self._build_reasoning(
+                matched_skills=matched_skills,
+                missing_skills=missing_skills,
+                candidate_years=candidate.years_of_experience,
+                min_years=jd.min_experience,
+                education_score=education_score,
+                certifications_score=certifications_score,
+            ),
             current_position=candidate.current_position,
             certifications=candidate.certifications,
             score_breakdown=breakdown,
@@ -108,32 +94,24 @@ class ScoringService:
     def _education_score(candidate_education: str, required_education: str) -> float:
         if not required_education.strip():
             return 100
-
-        candidate_text = candidate_education.lower()
-        required_text = required_education.lower()
-        return 100 if required_text in candidate_text else 0
+        return 100 if required_education.strip().lower() in candidate_education.lower() else 0
 
     @staticmethod
     def _certifications_score(certifications: list[str], nice_to_have: list[str]) -> float:
-        if not certifications:
-            return 0
-
         if not nice_to_have:
-            return 100
+            return 100 if certifications else 0
 
-        cert_text = " ".join(certifications).lower()
+        certification_text = " ".join(certifications).lower()
         targets = [item.strip().lower() for item in nice_to_have if item.strip()]
         if not targets:
             return 100
 
-        hits = sum(1 for target in targets if target in cert_text)
-        if hits == 0:
-            return 40
-
-        return min((hits / len(targets)) * 100, 100)
+        hits = sum(1 for target in targets if target in certification_text)
+        return min((hits / len(targets)) * 100, 100) if hits else 0
 
     @staticmethod
     def _build_reasoning(
+        *,
         matched_skills: list[str],
         missing_skills: list[str],
         candidate_years: float,
@@ -145,32 +123,31 @@ class ScoringService:
         gaps: list[str] = []
 
         if matched_skills:
-            strengths.append(f"Strong {', '.join(matched_skills[:3])} experience")
+            strengths.append(f"strong {', '.join(matched_skills[:3])} coverage")
         else:
-            gaps.append("no core required skills matched")
+            gaps.append("no required skill overlap")
 
         if min_years > 0:
             if candidate_years >= min_years:
-                strengths.append(f"meets the experience target with {candidate_years:g} years")
+                strengths.append(f"meets the {min_years:g}+ year experience target")
             else:
-                gaps.append(f"experience below the {min_years:g}-year target")
+                gaps.append(f"below the {min_years:g}+ year experience target")
         elif candidate_years > 0:
             strengths.append(f"brings {candidate_years:g} years of experience")
 
         if education_score >= 100:
             strengths.append("education aligns with the role")
-        else:
-            gaps.append("education alignment is unclear")
+        elif education_score == 0:
+            gaps.append("education match is unclear")
 
-        if certifications_score >= 80:
-            strengths.append("certifications are relevant")
-        elif certifications_score <= 20:
-            gaps.append("certification relevance is limited")
-
-        if missing_skills:
+        if certifications_score >= 100:
+            strengths.append("certifications support the role")
+        elif certifications_score == 0 and missing_skills:
             gaps.append(f"lacks {', '.join(missing_skills[:3])}")
 
-        strong_part = ", ".join(strengths[:3]) if strengths else "Profile fit is mixed"
-        gap_part = ", ".join(gaps[:2]) if gaps else "with no major skill gaps"
-
-        return f"{strong_part}, {gap_part}."
+        sentence: list[str] = []
+        if strengths:
+            sentence.append("Strengths: " + "; ".join(strengths))
+        if gaps:
+            sentence.append("Gaps: " + "; ".join(gaps))
+        return ". ".join(sentence) if sentence else "Solid overall profile fit."

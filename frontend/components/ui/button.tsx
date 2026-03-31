@@ -12,12 +12,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[linear-gradient(135deg,rgba(108,99,255,0.95),rgba(80,72,255,0.88))] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_0_32px_rgba(108,99,255,0.26)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_0_40px_rgba(108,99,255,0.34)]",
+          "bg-[linear-gradient(135deg,#f97316,#fb923c)] text-white shadow-[0_14px_28px_rgba(249,115,22,0.22)] hover:shadow-[0_18px_34px_rgba(249,115,22,0.28)]",
         secondary:
-          "border border-white/10 bg-white/[0.06] text-white hover:bg-white/[0.09] hover:shadow-[0_0_28px_rgba(255,255,255,0.06)]",
-        ghost: "text-white/70 hover:bg-white/[0.06] hover:text-white",
+          "border border-slate-200 bg-white text-slate-800 shadow-[0_8px_20px_rgba(15,23,42,0.05)] hover:bg-orange-50 hover:border-orange-200",
+        ghost: "text-slate-600 hover:bg-orange-50 hover:text-slate-950",
         outline:
-          "border border-white/10 bg-transparent text-white/88 hover:border-primary/45 hover:bg-primary/10 hover:text-white",
+          "border border-slate-200 bg-transparent text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-slate-950",
         destructive:
           "bg-[linear-gradient(135deg,rgba(239,68,68,0.94),rgba(220,38,38,0.86))] text-white shadow-[0_0_24px_rgba(239,68,68,0.22)] hover:shadow-[0_0_34px_rgba(239,68,68,0.28)]"
       },

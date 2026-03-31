@@ -1,7 +1,7 @@
 "use client";
 
-import { KeyboardEvent, useEffect, useMemo, useState } from "react";
-import { BotMessageSquare, Plus, SendHorizontal } from "lucide-react";
+import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { BotMessageSquare, Plus, SendHorizontal, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/common/empty-state";
@@ -9,18 +9,15 @@ import { PageHeader } from "@/components/common/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { streamChatAnswer } from "@/lib/api/client";
 import { incrementStoredNumber } from "@/lib/storage";
-import type { ChatSource } from "@/lib/api/types";
 import { formatDate } from "@/lib/utils";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  sources?: ChatSource[];
 }
 
 interface Conversation {
@@ -46,6 +43,7 @@ export default function ChatPage() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [systemStatus, setSystemStatus] = useState("Ready");
+  const messagesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const raw = window.localStorage.getItem("tc_chat_conversations");
@@ -66,123 +64,122 @@ export default function ChatPage() {
     window.localStorage.setItem("tc_chat_conversations", JSON.stringify(conversations));
   }, [conversations]);
 
+  useEffect(() => {
+    if (!messagesRef.current) {
+      return;
+    }
+    messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+  }, [activeConversationId, conversations, loading]);
+
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeConversationId) ?? null,
     [conversations, activeConversationId]
   );
 
-  const latestSources = useMemo(() => {
-    const assistantWithSources = [...(activeConversation?.messages ?? [])]
-      .reverse()
-      .find((message) => message.role === "assistant" && message.sources && message.sources.length > 0);
-    return assistantWithSources?.sources ?? [];
-  }, [activeConversation]);
-
   const patchConversation = (
     conversationId: string,
     updater: (conversation: Conversation) => Conversation
   ) => {
-    setConversations((current) => {
-      const existing = current.find((conversation) => conversation.id === conversationId);
-      if (!existing) {
-        return current;
-      }
-
-      const updated = updater(existing);
-      return [updated, ...current.filter((conversation) => conversation.id !== conversationId)];
-    });
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId ? updater(conversation) : conversation
+      )
+    );
   };
 
-  const resetChat = () => {
-    setActiveConversationId(null);
+  const ensureConversation = () => {
+    if (activeConversationId) {
+      return activeConversationId;
+    }
+
+    const nextConversation: Conversation = {
+      id: uid(),
+      title: "New conversation",
+      updatedAt: new Date().toISOString(),
+      messages: []
+    };
+
+    setConversations((current) => [nextConversation, ...current]);
+    setActiveConversationId(nextConversation.id);
+    return nextConversation.id;
+  };
+
+  const createConversation = () => {
+    const nextConversation: Conversation = {
+      id: uid(),
+      title: "New conversation",
+      updatedAt: new Date().toISOString(),
+      messages: []
+    };
+
+    setConversations((current) => [nextConversation, ...current]);
+    setActiveConversationId(nextConversation.id);
     setPrompt("");
     setSystemStatus("Ready");
   };
 
-  const sendMessage = async (messageText?: string) => {
-    const content = (messageText ?? prompt).trim();
-    if (!content || loading) {
+  const sendMessage = async (overridePrompt?: string) => {
+    const value = (overridePrompt ?? prompt).trim();
+    if (!value || loading) {
       return;
     }
 
-    const conversationId = activeConversationId ?? uid();
-    const userMessage: Message = { id: uid(), role: "user", content };
+    const conversationId = ensureConversation();
+    const userMessage: Message = { id: uid(), role: "user", content: value };
     const assistantMessage: Message = { id: uid(), role: "assistant", content: "" };
 
-    setActiveConversationId(conversationId);
-    setConversations((current) => {
-      const existing = current.find((item) => item.id === conversationId);
-      if (!existing) {
-        return [
-          {
-            id: conversationId,
-            title: content,
-            updatedAt: new Date().toISOString(),
-            messages: [userMessage, assistantMessage]
-          },
-          ...current
-        ];
-      }
-
-      const updatedConversation: Conversation = {
-        ...existing,
-        title: existing.title || content,
-        updatedAt: new Date().toISOString(),
-        messages: [...existing.messages, userMessage, assistantMessage]
-      };
-
-      return [updatedConversation, ...current.filter((item) => item.id !== conversationId)];
-    });
+    patchConversation(conversationId, (conversation) => ({
+      ...conversation,
+      title: conversation.messages.length === 0 ? value.slice(0, 48) : conversation.title,
+      updatedAt: new Date().toISOString(),
+      messages: [...conversation.messages, userMessage, assistantMessage]
+    }));
 
     setPrompt("");
     setLoading(true);
-    setSystemStatus("Searching documents...");
+    setSystemStatus("Searching candidate knowledge base...");
 
     try {
-      incrementStoredNumber("tc_chat_queries_used");
       await streamChatAnswer(
-        { question: content, top_k: 5 },
+        { question: value, top_k: 5 },
         {
-          onToken: (token) => {
+          onToken: (text) => {
             patchConversation(conversationId, (conversation) => ({
               ...conversation,
               updatedAt: new Date().toISOString(),
               messages: conversation.messages.map((message) =>
-                message.id === assistantMessage.id
-                  ? { ...message, content: `${message.content}${token}` }
-                  : message
+                message.id === assistantMessage.id ? { ...message, content: `${message.content}${text}` } : message
               )
             }));
-            setSystemStatus("Generating answer...");
           },
-          onSources: (sources) => {
-            patchConversation(conversationId, (conversation) => ({
-              ...conversation,
-              messages: conversation.messages.map((message) =>
-                message.id === assistantMessage.id ? { ...message, sources } : message
-              )
-            }));
+          onSources: () => {
+            // intentionally hidden in the current UI
           },
           onDone: () => {
             setSystemStatus("Ready");
+            incrementStoredNumber("tc_chat_queries_used");
           },
           onError: (message) => {
-            setSystemStatus("Error");
-            toast.error(message);
-            patchConversation(conversationId, (conversation) => ({
-              ...conversation,
-              messages: conversation.messages.map((item) =>
-                item.id === assistantMessage.id && !item.content
-                  ? { ...item, content: message }
-                  : item
-              )
-            }));
+            throw new Error(message);
           }
         }
       );
     } catch (error) {
-      setSystemStatus("Error");
-      toast.error(error instanceof Error ? error.message : "Unable to stream answer");
+      patchConversation(conversationId, (conversation) => ({
+        ...conversation,
+        updatedAt: new Date().toISOString(),
+        messages: conversation.messages.map((message) =>
+          message.id === assistantMessage.id
+            ? {
+                ...message,
+                content:
+                  error instanceof Error ? error.message : "Unable to get a response from the assistant."
+              }
+            : message
+        )
+      }));
+      toast.error(error instanceof Error ? error.message : "Unable to stream chat response");
+      setSystemStatus("Issue detected");
     } finally {
       setLoading(false);
     }
@@ -198,160 +195,143 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
-      <div className="space-y-6">
-        <PageHeader
-          className="mt-0"
-          title="AI chat"
-          description="Ask direct questions about uploaded candidates and receive streamed answers from the indexed document base."
-          action={
-            <Button variant="secondary" onClick={resetChat}>
-              <Plus className="h-4 w-4" />
-              New chat
-            </Button>
-          }
-        />
+    <div className="grid gap-6">
+      <PageHeader
+        eyebrow="AI Chat"
+        title="Ask recruiter questions in one focused conversation surface"
+        description="Stream grounded answers from uploaded candidate documents without leaving the workspace."
+        action={
+          <Button variant="secondary" onClick={createConversation}>
+            <Plus className="h-4 w-4" />
+            New chat
+          </Button>
+        }
+      />
 
-        <Card>
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Conversations</CardTitle>
-            <CardDescription>Saved in this browser session.</CardDescription>
+            <CardDescription>Recent recruiter chat sessions stored in this browser.</CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
-            {conversations.length === 0 ? (
-              <div className="px-6 pb-6">
+          <CardContent className="space-y-3">
+            <Button className="w-full" variant="secondary" onClick={createConversation}>
+              <Plus className="h-4 w-4" />
+              Start fresh
+            </Button>
+
+            <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1">
+              {conversations.length === 0 ? (
                 <EmptyState
                   icon={BotMessageSquare}
-                  title="No conversations"
-                  description="Start a question to create your first chat thread."
+                  title="No conversations yet"
+                  description="Start with a recruiter question and the assistant will stream an answer here."
                 />
-              </div>
-            ) : (
-              <ScrollArea className="h-[640px]">
-                <div className="space-y-2 p-4">
-                  {conversations.map((conversation) => (
+              ) : (
+                conversations.map((conversation) => {
+                  const isActive = conversation.id === activeConversationId;
+                  return (
                     <button
                       key={conversation.id}
                       type="button"
                       onClick={() => setActiveConversationId(conversation.id)}
-                      className={`w-full rounded-[20px] border p-4 text-left transition ${
-                        activeConversationId === conversation.id
-                          ? "border-primary/45 bg-primary/10"
-                          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
+                      className={`w-full rounded-[24px] border p-4 text-left transition ${
+                        isActive
+                          ? "border-orange-200 bg-orange-50"
+                          : "border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/60"
                       }`}
                     >
-                      <p className="line-clamp-1 text-sm font-medium text-white">
-                        {conversation.title}
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="line-clamp-1 text-sm font-semibold text-slate-950">{conversation.title}</p>
+                        {isActive ? <Badge>Active</Badge> : null}
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                        {conversation.messages.at(-1)?.content || "No messages yet"}
                       </p>
-                      <p className="mt-1 text-xs text-white/42">
+                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-400">
                         {formatDate(conversation.updatedAt)}
                       </p>
                     </button>
-                  ))}
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b border-slate-200/80 bg-white/70">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle>{activeConversation?.title ?? "AI assistant"}</CardTitle>
+                <CardDescription>Streaming answers from your recruiter-scoped candidate knowledge base.</CardDescription>
+              </div>
+              <Badge variant={loading ? "warning" : "success"}>{systemStatus}</Badge>
+            </div>
+          </CardHeader>
+
+          <CardContent className="grid gap-5 p-0">
+            <div ref={messagesRef} className="max-h-[520px] min-h-[420px] space-y-4 overflow-y-auto px-6 py-6">
+              {!activeConversation ? (
+                <EmptyState
+                  icon={Sparkles}
+                  title="Start the conversation"
+                  description="Ask about skills, experience, fit, or any candidate detail already stored in your workspace."
+                />
+              ) : (
+                activeConversation.messages.map((message) => {
+                  const isUser = message.role === "user";
+                  return (
+                    <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-3xl rounded-[24px] px-5 py-4 text-sm leading-7 shadow-[0_12px_28px_rgba(15,23,42,0.04)] ${
+                          isUser
+                            ? "bg-[linear-gradient(135deg,#f97316,#fb923c)] text-white"
+                            : "border border-slate-200 bg-white text-slate-700"
+                        }`}
+                      >
+                        {message.content || (loading && !isUser ? "Thinking..." : "")}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="border-t border-slate-200/80 px-6 py-6">
+              <div className="mb-4 flex flex-wrap gap-2">
+                {examplePrompts.map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    onClick={() => setPrompt(example)}
+                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-slate-950"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <Textarea
+                  value={prompt}
+                  onChange={(event) => setPrompt(event.target.value)}
+                  onKeyDown={handlePromptKeyDown}
+                  placeholder="Ask about candidate skills, experience, job fit, or recruiter insights..."
+                  className="min-h-[140px]"
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-slate-500">Press Enter to send. Use Shift + Enter for a new line.</p>
+                  <Button onClick={() => void sendMessage()} disabled={loading || !prompt.trim()}>
+                    <SendHorizontal className="h-4 w-4" />
+                    Send
+                  </Button>
                 </div>
-              </ScrollArea>
-            )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="min-h-[760px]">
-        <CardHeader className="border-b border-white/6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <CardTitle>Candidate knowledge chat</CardTitle>
-              <CardDescription>Streamed answers grounded in uploaded CV documents.</CardDescription>
-            </div>
-            <Badge
-              variant={loading ? "teal" : systemStatus === "Error" ? "warning" : "outline"}
-              className="normal-case tracking-normal"
-            >
-              {systemStatus}
-            </Badge>
-          </div>
-        </CardHeader>
-
-        <CardContent className="flex h-full flex-col p-0">
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-4 p-6">
-              {!activeConversation || activeConversation.messages.length === 0 ? (
-                <EmptyState
-                  icon={BotMessageSquare}
-                  title="Start a conversation"
-                  description="Ask a question about candidate skills, experience, or role fit."
-                />
-              ) : (
-                activeConversation.messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-[20px] px-4 py-3 text-sm leading-7 ${
-                        message.role === "user"
-                          ? "bg-primary text-white"
-                          : "border border-white/10 bg-white/[0.04] text-white/78"
-                      }`}
-                    >
-                      {message.content || (loading && message.role === "assistant" ? "Thinking..." : "")}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-
-          <div className="border-t border-white/6 p-6">
-            <div className="mb-4 flex flex-wrap gap-2">
-              {examplePrompts.map((example) => (
-                <button
-                  key={example}
-                  type="button"
-                  onClick={() => sendMessage(example)}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/68 transition hover:border-primary/35 hover:text-white"
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-3">
-              <Textarea
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                onKeyDown={handlePromptKeyDown}
-                placeholder="Ask about candidate experience, skills, or fit..."
-                className="min-h-[120px]"
-              />
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-white/45">
-                  Answers are generated from uploaded candidate documents.
-                </p>
-                <Button onClick={() => sendMessage()} disabled={loading || !prompt.trim()}>
-                  <SendHorizontal className="h-4 w-4" />
-                  Send
-                </Button>
-              </div>
-            </div>
-
-            {latestSources.length > 0 && (
-              <div className="mt-5 border-t border-white/6 pt-5">
-                <p className="text-sm font-medium text-white">Sources</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {latestSources.map((source, index) => (
-                    <div
-                      key={`${source.file_name}-${index}`}
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/68"
-                    >
-                      {source.candidate_name} • {source.file_name} • page {source.page_number}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

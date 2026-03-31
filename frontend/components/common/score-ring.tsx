@@ -24,7 +24,7 @@ export function ScoreRing({ value, label = "Match", size = 88 }: ScoreRingProps)
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255,255,255,0.08)"
+          stroke="rgba(226,232,240,1)"
           strokeWidth={strokeWidth}
           fill="transparent"
         />
@@ -43,14 +43,14 @@ export function ScoreRing({ value, label = "Match", size = 88 }: ScoreRingProps)
         />
         <defs>
           <linearGradient id="scoreRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#6C63FF" />
-            <stop offset="100%" stopColor="#00D4AA" />
+            <stop offset="0%" stopColor="#f97316" />
+            <stop offset="100%" stopColor="#fb923c" />
           </linearGradient>
         </defs>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-lg font-semibold text-white">{formatPercent(clamped)}</span>
-        <span className="text-[10px] uppercase tracking-[0.25em] text-white/38">{label}</span>
+        <span className="font-display text-lg font-semibold text-slate-950">{formatPercent(clamped)}</span>
+        <span className="text-[10px] uppercase tracking-[0.25em] text-slate-400">{label}</span>
       </div>
     </div>
   );
