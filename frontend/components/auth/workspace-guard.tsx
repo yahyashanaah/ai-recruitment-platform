@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -9,13 +9,16 @@ import { useAuth } from "@/components/providers/auth-provider";
 export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { session, loading } = useAuth();
+  const nextPath = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   useEffect(() => {
     if (!loading && !session) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
+      router.refresh();
     }
-  }, [loading, pathname, router, session]);
+  }, [loading, nextPath, router, session]);
 
   if (loading || !session) {
     return (

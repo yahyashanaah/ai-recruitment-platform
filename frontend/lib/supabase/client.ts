@@ -4,6 +4,16 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let browserClient: SupabaseClient | null = null;
 
+function clearPersistedSessionStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  Object.keys(window.localStorage)
+    .filter((key) => key.startsWith("sb-") && (key.includes("auth-token") || key.includes("code-verifier")))
+    .forEach((key) => window.localStorage.removeItem(key));
+}
+
 export function getSupabaseBrowserClient() {
   if (browserClient) {
     return browserClient;
@@ -35,3 +45,13 @@ export async function getSupabaseAccessToken() {
   return session?.access_token ?? null;
 }
 
+export async function clearSupabaseBrowserSession() {
+  try {
+    const client = getSupabaseBrowserClient();
+    await client.auth.signOut({ scope: "local" });
+  } catch {
+    // ignore local sign-out failures and clear persisted storage anyway
+  }
+
+  clearPersistedSessionStorage();
+}

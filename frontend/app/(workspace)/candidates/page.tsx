@@ -20,7 +20,11 @@ import {
   SheetTitle
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteCandidate, listCandidates } from "@/lib/api/client";
+import {
+  deleteCandidate,
+  isAuthenticationRequiredError,
+  listCandidates
+} from "@/lib/api/client";
 import type { CandidateProfile } from "@/lib/api/types";
 import { formatDate, getInitials } from "@/lib/utils";
 
@@ -48,6 +52,9 @@ export default function CandidatesPage() {
       const response = await listCandidates();
       setCandidates(response);
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to load candidates");
     } finally {
       setLoading(false);
@@ -88,6 +95,9 @@ export default function CandidatesPage() {
       }
       toast.success("Candidate deleted");
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to delete candidate");
     }
   };
@@ -104,6 +114,9 @@ export default function CandidatesPage() {
       setActiveCandidate(null);
       toast.success("Selected candidates deleted");
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to delete selected candidates");
     }
   };

@@ -12,9 +12,13 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
-import { getCurrentRecruiterSession } from "@/lib/api/client";
+import {
+  AUTH_REQUIRED_EVENT,
+  getCurrentRecruiterSession,
+  isAuthenticationRequiredError
+} from "@/lib/api/client";
 import type { RecruiterProfile } from "@/lib/api/types";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { clearSupabaseBrowserSession, getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface AuthContextValue {
   session: Session | null;
@@ -52,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRecruiter(response.recruiter);
     } catch (error) {
       setRecruiter(null);
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       throw error;
     }
   }, []);
@@ -64,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await refreshRecruiter();
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelled && !isAuthenticationRequiredError(error)) {
           toast.error(error instanceof Error ? error.message : "Unable to load recruiter session");
         }
       } finally {
@@ -75,6 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     void bootstrap();
+
+    const handleAuthRequired = () => {
+      if (!cancelled) {
+        setSession(null);
+        setUser(null);
+        setRecruiter(null);
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired);
 
     const {
       data: { subscription }
@@ -97,7 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch((error) => {
           if (!cancelled) {
             setRecruiter(null);
-            toast.error(error instanceof Error ? error.message : "Unable to load recruiter session");
+            if (!isAuthenticationRequiredError(error)) {
+              toast.error(error instanceof Error ? error.message : "Unable to load recruiter session");
+            }
           }
         })
         .finally(() => {
@@ -109,16 +129,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      window.removeEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired);
       subscription.unsubscribe();
     };
   }, [refreshRecruiter]);
 
   const signOut = useCallback(async () => {
-    const client = getSupabaseBrowserClient();
-    await client.auth.signOut();
+    await clearSupabaseBrowserSession();
     setSession(null);
     setUser(null);
     setRecruiter(null);
+    setLoading(false);
   }, []);
 
   const value = useMemo(
@@ -143,4 +164,3 @@ export function useAuth() {
   }
   return context;
 }
-

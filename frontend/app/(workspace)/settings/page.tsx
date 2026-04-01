@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { listCandidates } from "@/lib/api/client";
+import { isAuthenticationRequiredError, listCandidates } from "@/lib/api/client";
 import { useStoredNumber } from "@/lib/storage";
 
 export default function SettingsPage() {
@@ -25,7 +25,10 @@ export default function SettingsPage() {
       try {
         const candidates = await listCandidates();
         setUploads(candidates.length);
-      } catch {
+      } catch (error) {
+        if (isAuthenticationRequiredError(error)) {
+          return;
+        }
         // ignore settings surface load failures
       }
     };

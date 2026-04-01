@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listCandidates } from "@/lib/api/client";
+import { isAuthenticationRequiredError, listCandidates } from "@/lib/api/client";
 import type { CandidateProfile } from "@/lib/api/types";
 import { useStoredNumber } from "@/lib/storage";
 import { formatDate } from "@/lib/utils";
@@ -59,6 +59,9 @@ export default function DashboardPage() {
         const response = await listCandidates();
         setCandidates(response);
       } catch (error) {
+        if (isAuthenticationRequiredError(error)) {
+          return;
+        }
         toast.error(error instanceof Error ? error.message : "Unable to load dashboard data");
       } finally {
         setLoading(false);

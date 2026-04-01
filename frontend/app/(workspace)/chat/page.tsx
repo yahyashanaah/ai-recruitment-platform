@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { streamChatAnswer } from "@/lib/api/client";
+import { isAuthenticationRequiredError, streamChatAnswer } from "@/lib/api/client";
 import { incrementStoredNumber } from "@/lib/storage";
 import { formatDate } from "@/lib/utils";
 
@@ -165,6 +165,10 @@ export default function ChatPage() {
         }
       );
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        setSystemStatus("Redirecting to login...");
+        return;
+      }
       patchConversation(conversationId, (conversation) => ({
         ...conversation,
         updatedAt: new Date().toISOString(),

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { matchJobDescription } from "@/lib/api/client";
+import { isAuthenticationRequiredError, matchJobDescription } from "@/lib/api/client";
 import type { MatchCandidate, MatchResponse } from "@/lib/api/types";
 import { incrementStoredNumber } from "@/lib/storage";
 import { downloadTextFile, exportHtmlToPrintWindow } from "@/lib/utils";
@@ -72,6 +72,9 @@ export default function MatchPage() {
       incrementStoredNumber("tc_match_runs");
       toast.success("JD analyzed successfully");
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to match candidates");
     } finally {
       setLoading(false);

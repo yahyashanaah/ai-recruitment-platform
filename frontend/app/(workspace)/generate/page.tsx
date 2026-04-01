@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { generateSmartJobDescription } from "@/lib/api/client";
+import { generateSmartJobDescription, isAuthenticationRequiredError } from "@/lib/api/client";
 import type { SmartJDResponse } from "@/lib/api/types";
 import { incrementStoredNumber } from "@/lib/storage";
 import { exportHtmlToPrintWindow, formatDate } from "@/lib/utils";
@@ -78,6 +78,9 @@ export default function GeneratePage() {
       incrementStoredNumber("tc_generated_jds");
       toast.success("Smart JD generated");
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to generate JD");
     } finally {
       setLoading(false);

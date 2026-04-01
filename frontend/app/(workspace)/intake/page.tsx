@@ -11,7 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteDocumentFile, listCandidates, uploadDocuments } from "@/lib/api/client";
+import {
+  deleteDocumentFile,
+  isAuthenticationRequiredError,
+  listCandidates,
+  uploadDocuments
+} from "@/lib/api/client";
 import type { CandidateProfile, UploadResponse } from "@/lib/api/types";
 import { formatDate, formatFileSize } from "@/lib/utils";
 
@@ -99,6 +104,9 @@ export default function IntakePage() {
       const candidates = await listCandidates();
       setHistory(groupHistory(candidates));
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to load file history");
     } finally {
       setLoadingHistory(false);
@@ -217,6 +225,9 @@ export default function IntakePage() {
           error: error instanceof Error ? error.message : "Upload failed"
         }))
       );
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to upload documents");
     } finally {
       setUploading(false);
@@ -229,6 +240,9 @@ export default function IntakePage() {
       setHistory((current) => current.filter((item) => item.fileName !== fileName));
       toast.success(`Removed ${fileName}`);
     } catch (error) {
+      if (isAuthenticationRequiredError(error)) {
+        return;
+      }
       toast.error(error instanceof Error ? error.message : "Unable to remove file");
     }
   };

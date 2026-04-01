@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -71,8 +71,10 @@ const pathLabels: Record<string, { title: string; subtitle: string }> = {
 };
 
 export function AppShell({ children }: AppShellProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [health, setHealth] = useState<HealthState>("loading");
+  const [signingOut, setSigningOut] = useState(false);
   const { recruiter, signOut } = useAuth();
 
   useEffect(() => {
@@ -107,6 +109,21 @@ export function AppShell({ children }: AppShellProps) {
       },
     [pathname]
   );
+
+  const handleSignOut = async () => {
+    if (signingOut) {
+      return;
+    }
+
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fffdf9_0%,#f7f3ec_100%)] px-3 py-3 text-slate-950 lg:px-4 lg:py-4">
@@ -190,9 +207,9 @@ export function AppShell({ children }: AppShellProps) {
                     variant="ghost"
                     size="icon"
                     aria-label="Sign out"
+                    disabled={signingOut}
                     onClick={() => {
-                      void signOut();
-                      window.location.href = "/login";
+                      void handleSignOut();
                     }}
                   >
                     <LogOut className="h-4 w-4" />

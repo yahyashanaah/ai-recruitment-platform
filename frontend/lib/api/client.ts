@@ -13,9 +13,23 @@ import type {
   SmartJDResponse,
   UploadResponse
 } from "@/lib/api/types";
-import { getSupabaseAccessToken } from "@/lib/supabase/client";
+import { clearSupabaseBrowserSession, getSupabaseAccessToken } from "@/lib/supabase/client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+export const AUTH_REQUIRED_EVENT = "talentcore:auth-required";
+
+export class AuthenticationRequiredError extends Error {
+  constructor(message = "Sign in required.") {
+    super(message);
+    this.name = "AuthenticationRequiredError";
+  }
+}
+
+export function isAuthenticationRequiredError(error: unknown): error is AuthenticationRequiredError {
+  return error instanceof AuthenticationRequiredError;
+}
+
+let authRedirectPending = false;
 
 function buildUrl(path: string) {
   const base = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
@@ -23,10 +37,37 @@ function buildUrl(path: string) {
   return `${base}${withSlash}`;
 }
 
+function buildLoginRedirectPath() {
+  if (typeof window === "undefined") {
+    return "/login";
+  }
+
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const nextPath =
+    currentPath.startsWith("/login") || currentPath.startsWith("/signup") ? "/dashboard" : currentPath;
+
+  return `/login?next=${encodeURIComponent(nextPath)}`;
+}
+
+async function handleAuthenticationRequired(message = "Sign in required.") {
+  await clearSupabaseBrowserSession();
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+
+    if (!authRedirectPending) {
+      authRedirectPending = true;
+      window.location.replace(buildLoginRedirectPath());
+    }
+  }
+
+  return new AuthenticationRequiredError(message);
+}
+
 async function resolveAuthToken(explicitToken?: string) {
   const token = explicitToken ?? (await getSupabaseAccessToken());
   if (!token) {
-    throw new Error("Sign in required.");
+    throw await handleAuthenticationRequired("Sign in required.");
   }
   return token;
 }
@@ -55,6 +96,11 @@ async function parseJSON<T>(response: Response): Promise<T> {
     } catch {
       // ignore JSON parsing failure
     }
+
+    if (response.status === 401) {
+      throw await handleAuthenticationRequired(message);
+    }
+
     throw new Error(message);
   }
 
@@ -192,6 +238,10 @@ export async function streamChatAnswer(
     }),
     body: JSON.stringify(payload)
   });
+
+  if (response.status === 401) {
+    throw await handleAuthenticationRequired("Sign in required.");
+  }
 
   if (!response.ok || !response.body) {
     throw new Error(`Chat stream failed with status ${response.status}`);
