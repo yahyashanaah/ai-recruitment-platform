@@ -14,7 +14,7 @@ import {
   Sparkles,
   UserCircle2,
   UsersRound,
-  WandSparkles
+  WandSparkles,
 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -36,38 +36,42 @@ const navItems = [
   { href: "/chat", label: "AI Chat", icon: BotMessageSquare },
   { href: "/match", label: "JD Matching", icon: BriefcaseBusiness },
   { href: "/generate", label: "JD Generator", icon: WandSparkles },
-  { href: "/settings", label: "Settings", icon: Settings }
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const pathLabels: Record<string, { title: string; subtitle: string }> = {
   "/dashboard": {
     title: "Recruiter Workspace",
-    subtitle: "Track hiring activity, candidate volume, and next actions from one focused view."
+    subtitle:
+      "Track hiring activity, candidate volume, and next actions from one focused view.",
   },
   "/intake": {
     title: "Document Intake",
-    subtitle: "Upload resumes, process batches, and review file history."
+    subtitle: "Upload resumes, process batches, and review file history.",
   },
   "/candidates": {
     title: "Candidates",
-    subtitle: "Filter, review, and manage structured candidate profiles."
+    subtitle: "Filter, review, and manage structured candidate profiles.",
   },
   "/chat": {
     title: "AI Chat",
-    subtitle: "Ask recruiter questions and stream grounded answers from uploaded candidate documents."
+    subtitle:
+      "Ask recruiter questions and stream grounded answers from uploaded candidate documents.",
   },
   "/match": {
     title: "JD Matching",
-    subtitle: "Parse job descriptions and compare the strongest candidate fits."
+    subtitle:
+      "Parse job descriptions and compare the strongest candidate fits.",
   },
   "/generate": {
     title: "JD Generator",
-    subtitle: "Create matching-ready job descriptions from a short hiring brief."
+    subtitle:
+      "Create matching-ready job descriptions from a short hiring brief.",
   },
   "/settings": {
     title: "Settings",
-    subtitle: "Manage profile, usage, and workspace preferences."
-  }
+    subtitle: "Manage profile, usage, and workspace preferences.",
+  },
 };
 
 export function AppShell({ children }: AppShellProps) {
@@ -104,10 +108,11 @@ export function AppShell({ children }: AppShellProps) {
   const copy = useMemo(
     () =>
       pathLabels[pathname] ?? {
-        title: "TalentCore AI Workspace",
-        subtitle: "A focused recruiter workspace for intake, search, and matching."
+        title: "AI Recruiter Workspace",
+        subtitle:
+          "A focused recruiter workspace for intake, search, and matching.",
       },
-    [pathname]
+    [pathname],
   );
 
   const handleSignOut = async () => {
@@ -129,13 +134,20 @@ export function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-[linear-gradient(180deg,#fffdf9_0%,#f7f3ec_100%)] px-3 py-3 text-slate-950 lg:px-4 lg:py-4">
       <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] max-w-[1680px] gap-3 xl:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="marketing-card hidden min-h-full rounded-[28px] p-5 xl:flex xl:flex-col">
-          <Link href="/dashboard" className="mb-8 flex items-center gap-3 rounded-2xl px-1 py-2">
+          <Link
+            href="/dashboard"
+            className="mb-8 flex items-center gap-3 rounded-2xl px-1 py-2"
+          >
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_14px_28px_rgba(249,115,22,0.22)]">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">TalentCore AI</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Recruitment Intelligence</p>
+              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
+                AI Recruiter
+              </p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                Recruitment Intelligence
+              </p>
             </div>
           </Link>
 
@@ -150,7 +162,9 @@ export function AppShell({ children }: AppShellProps) {
                   href={item.href}
                   className={cn(
                     "relative flex items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-sm font-medium transition-colors",
-                    isActive ? "text-slate-950" : "text-slate-600 hover:text-slate-950"
+                    isActive
+                      ? "text-slate-950"
+                      : "text-slate-600 hover:text-slate-950",
                   )}
                 >
                   {isActive && (
@@ -160,7 +174,12 @@ export function AppShell({ children }: AppShellProps) {
                       transition={{ type: "spring", duration: 0.45 }}
                     />
                   )}
-                  <Icon className={cn("relative z-10 h-4 w-4", isActive ? "text-orange-600" : "text-slate-400")} />
+                  <Icon
+                    className={cn(
+                      "relative z-10 h-4 w-4",
+                      isActive ? "text-orange-600" : "text-slate-400",
+                    )}
+                  />
                   <span className="relative z-10">{item.label}</span>
                 </Link>
               );
@@ -170,12 +189,25 @@ export function AppShell({ children }: AppShellProps) {
           <div className="mt-auto rounded-[24px] border border-orange-100 bg-orange-50/70 p-4">
             <div className="flex items-center justify-between text-sm font-medium text-slate-700">
               <span>Workspace status</span>
-              <Badge variant={health === "healthy" ? "success" : health === "loading" ? "outline" : "warning"}>
-                {health === "healthy" ? "Healthy" : health === "loading" ? "Checking" : "Issue"}
+              <Badge
+                variant={
+                  health === "healthy"
+                    ? "success"
+                    : health === "loading"
+                      ? "outline"
+                      : "warning"
+                }
+              >
+                {health === "healthy"
+                  ? "Healthy"
+                  : health === "loading"
+                    ? "Checking"
+                    : "Issue"}
               </Badge>
             </div>
             <p className="mt-3 text-sm leading-7 text-slate-600">
-              Your recruiter workspace is connected to the protected backend for uploads, chat, matching, and candidate management.
+              Your recruiter workspace is connected to the protected backend for
+              uploads, chat, matching, and candidate management.
             </p>
           </div>
         </aside>
@@ -185,21 +217,41 @@ export function AppShell({ children }: AppShellProps) {
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">TalentCore AI</p>
-                  <h1 className="font-display text-2xl font-semibold text-slate-950">{copy.title}</h1>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                    AI Recruiter
+                  </p>
+                  <h1 className="font-display text-2xl font-semibold text-slate-950">
+                    {copy.title}
+                  </h1>
                   <p className="mt-1 text-sm text-slate-600">{copy.subtitle}</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Badge variant={health === "healthy" ? "success" : health === "loading" ? "outline" : "warning"}>
-                    {health === "healthy" ? "Backend healthy" : health === "loading" ? "Checking backend" : "Backend issue"}
+                  <Badge
+                    variant={
+                      health === "healthy"
+                        ? "success"
+                        : health === "loading"
+                          ? "outline"
+                          : "warning"
+                    }
+                  >
+                    {health === "healthy"
+                      ? "Backend healthy"
+                      : health === "loading"
+                        ? "Checking backend"
+                        : "Backend issue"}
                   </Badge>
 
                   <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                     <UserCircle2 className="h-8 w-8 text-orange-500" />
                     <div className="hidden sm:block">
-                      <p className="font-medium text-slate-950">{recruiter?.full_name ?? "Recruiter"}</p>
-                      <p className="text-xs text-slate-500">{recruiter?.email ?? "Authenticated workspace"}</p>
+                      <p className="font-medium text-slate-950">
+                        {recruiter?.full_name ?? "Recruiter"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {recruiter?.email ?? "Authenticated workspace"}
+                      </p>
                     </div>
                   </div>
 
@@ -226,7 +278,9 @@ export function AppShell({ children }: AppShellProps) {
                       href={item.href}
                       className={cn(
                         "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium",
-                        isActive ? "border-orange-200 bg-orange-50 text-orange-700" : "border-slate-200 bg-white text-slate-600"
+                        isActive
+                          ? "border-orange-200 bg-orange-50 text-orange-700"
+                          : "border-slate-200 bg-white text-slate-600",
                       )}
                     >
                       {item.label}

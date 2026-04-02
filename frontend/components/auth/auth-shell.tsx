@@ -1,10 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BriefcaseBusiness, MessageSquareText, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  MessageSquareText,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface AuthShellProps {
   title: string;
@@ -16,18 +28,21 @@ const highlights = [
   {
     icon: BriefcaseBusiness,
     title: "Candidate management",
-    description: "Review structured profiles, shortlist faster, and keep recruiter work organized."
+    description:
+      "Review structured profiles, shortlist faster, and keep recruiter work organized.",
   },
   {
     icon: MessageSquareText,
     title: "AI chat and matching",
-    description: "Search candidate knowledge, compare job descriptions, and move to decisions faster."
+    description:
+      "Search candidate knowledge, compare job descriptions, and move to decisions faster.",
   },
   {
     icon: ShieldCheck,
     title: "Protected recruiter workspace",
-    description: "Supabase authentication and recruiter-scoped access keep every workspace isolated."
-  }
+    description:
+      "Supabase authentication and recruiter-scoped access keep every workspace isolated.",
+  },
 ];
 
 export function AuthShell({ title, description, children }: AuthShellProps) {
@@ -40,8 +55,12 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">TalentCore AI</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Recruitment Intelligence</p>
+              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
+                AI Recruiter
+              </p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                Recruitment Intelligence
+              </p>
             </div>
           </Link>
 
@@ -53,7 +72,9 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
               Enter a cleaner hiring workspace.
             </h1>
             <p className="mt-5 text-base leading-8 text-slate-600">
-              Sign in to manage candidate intake, recruiter chat, and job matching in the same product surface as the new landing experience.
+              Sign in to manage candidate intake, recruiter chat, and job
+              matching in the same product surface as the new landing
+              experience.
             </p>
           </div>
 
@@ -61,13 +82,20 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
             {highlights.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="marketing-card flex items-start gap-4 rounded-[26px] p-5">
+                <div
+                  key={item.title}
+                  className="marketing-card flex items-start gap-4 rounded-[26px] p-5"
+                >
                   <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-orange-50 text-orange-600">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-base font-semibold text-slate-950">{item.title}</p>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{item.description}</p>
+                    <p className="text-base font-semibold text-slate-950">
+                      {item.title}
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-slate-600">
+                      {item.description}
+                    </p>
                   </div>
                 </div>
               );
@@ -90,8 +118,12 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
                 <Sparkles className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-display text-lg font-semibold tracking-tight text-slate-950">TalentCore AI</p>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Recruitment Intelligence</p>
+                <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
+                  AI Recruiter
+                </p>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                  Recruitment Intelligence
+                </p>
               </div>
             </Link>
           </div>

@@ -6,27 +6,35 @@ import { ArrowRight, Check, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const plans = [
   {
     name: "Starter",
     monthlyPrice: 49,
     target: "Solo recruiters",
-    description: "For individual recruiters building an AI-assisted hiring workflow.",
+    description:
+      "For individual recruiters building an AI-assisted hiring workflow.",
     features: [
       "Up to 50 CV uploads/month",
       "AI chat (100 queries/month)",
       "Basic JD matching (top 5 candidates)",
-      "1 seat"
+      "1 seat",
     ],
-    cta: "Start Starter"
+    cta: "Start Starter",
   },
   {
     name: "Growth",
     monthlyPrice: 149,
     target: "Small agencies (up to 5 seats)",
-    description: "For recruiting teams that need faster shortlists and clearer matching decisions.",
+    description:
+      "For recruiting teams that need faster shortlists and clearer matching decisions.",
     featured: true,
     features: [
       "Up to 300 CV uploads/month",
@@ -34,15 +42,16 @@ const plans = [
       "Full JD matching + scoring breakdown",
       "Smart JD Generator (20 JDs/month)",
       "5 seats",
-      "Priority support"
+      "Priority support",
     ],
-    cta: "Choose Growth"
+    cta: "Choose Growth",
   },
   {
     name: "Enterprise",
     monthlyPrice: 499,
     target: "Large HR teams, unlimited seats",
-    description: "For high-volume hiring teams that need integrations, controls, and procurement support.",
+    description:
+      "For high-volume hiring teams that need integrations, controls, and procurement support.",
     features: [
       "Unlimited CV uploads",
       "Unlimited everything",
@@ -51,10 +60,10 @@ const plans = [
       "Smart JD Generator (unlimited)",
       "Dedicated account manager",
       "SSO + advanced security",
-      "SLA guarantee"
+      "SLA guarantee",
     ],
-    cta: "Talk to Sales"
-  }
+    cta: "Talk to Sales",
+  },
 ];
 
 export default function PricingPage() {
@@ -64,10 +73,12 @@ export default function PricingPage() {
     () =>
       plans.map((plan) => ({
         ...plan,
-        price: annual ? Math.round(plan.monthlyPrice * 12 * 0.8) : plan.monthlyPrice,
-        suffix: annual ? "/yr" : "/mo"
+        price: annual
+          ? Math.round(plan.monthlyPrice * 12 * 0.8)
+          : plan.monthlyPrice,
+        suffix: annual ? "/yr" : "/mo",
       })),
-    [annual]
+    [annual],
   );
 
   return (
@@ -79,12 +90,19 @@ export default function PricingPage() {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">TalentCore AI</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Recruitment Intelligence</p>
+              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
+                AI Recruiter
+              </p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                Recruitment Intelligence
+              </p>
             </div>
           </Link>
 
-          <Link href="/signup" className="inline-flex items-center gap-2 text-sm font-medium text-orange-600 transition hover:text-orange-700">
+          <Link
+            href="/signup"
+            className="inline-flex items-center gap-2 text-sm font-medium text-orange-600 transition hover:text-orange-700"
+          >
             Start free trial
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -94,10 +112,13 @@ export default function PricingPage() {
           <div className="max-w-3xl">
             <Badge>Pricing</Badge>
             <h1 className="font-display mt-5 text-4xl font-semibold tracking-tight text-slate-950 md:text-6xl">
-              Simple pricing for recruiters who want faster, cleaner hiring workflows.
+              Simple pricing for recruiters who want faster, cleaner hiring
+              workflows.
             </h1>
             <p className="mt-5 text-base leading-8 text-slate-600">
-              Choose a plan that fits your current hiring volume, then scale into deeper matching, automation, and enterprise controls as your recruiting workflow grows.
+              Choose a plan that fits your current hiring volume, then scale
+              into deeper matching, automation, and enterprise controls as your
+              recruiting workflow grows.
             </p>
           </div>
 
@@ -122,19 +143,34 @@ export default function PricingPage() {
 
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {renderedPlans.map((plan) => (
-            <Card key={plan.name} className={plan.featured ? "border-orange-200 shadow-[0_18px_40px_rgba(249,115,22,0.12)]" : undefined}>
+            <Card
+              key={plan.name}
+              className={
+                plan.featured
+                  ? "border-orange-200 shadow-[0_18px_40px_rgba(249,115,22,0.12)]"
+                  : undefined
+              }
+            >
               <CardHeader>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <CardTitle>{plan.name}</CardTitle>
-                    <CardDescription className="mt-2">{plan.target}</CardDescription>
+                    <CardDescription className="mt-2">
+                      {plan.target}
+                    </CardDescription>
                   </div>
                   {plan.featured ? <Badge>Most popular</Badge> : null}
                 </div>
-                <p className="mt-4 text-sm leading-7 text-slate-600">{plan.description}</p>
+                <p className="mt-4 text-sm leading-7 text-slate-600">
+                  {plan.description}
+                </p>
                 <div className="mt-6 flex items-end gap-2">
-                  <span className="font-display text-5xl font-semibold text-slate-950">${plan.price}</span>
-                  <span className="pb-1 text-sm text-slate-400">{plan.suffix}</span>
+                  <span className="font-display text-5xl font-semibold text-slate-950">
+                    ${plan.price}
+                  </span>
+                  <span className="pb-1 text-sm text-slate-400">
+                    {plan.suffix}
+                  </span>
                 </div>
               </CardHeader>
               <CardContent className="flex h-full flex-col gap-6">
@@ -168,10 +204,13 @@ export default function PricingPage() {
           <CardContent className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="font-display text-2xl font-semibold text-slate-950">
-                Need custom procurement, data residency, or ATS integration support?
+                Need custom procurement, data residency, or ATS integration
+                support?
               </p>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                Enterprise buyers usually need deployment planning, SSO, and legal review. We support that path with a guided onboarding flow.
+                Enterprise buyers usually need deployment planning, SSO, and
+                legal review. We support that path with a guided onboarding
+                flow.
               </p>
             </div>
             <Button asChild variant="secondary">

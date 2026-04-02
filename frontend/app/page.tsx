@@ -11,7 +11,7 @@ import {
   MessageSquareText,
   Sparkles,
   Twitter,
-  WandSparkles
+  WandSparkles,
 } from "lucide-react";
 
 import { ChatPreview } from "@/components/marketing/chat-preview";
@@ -19,59 +19,67 @@ import { PricingCard } from "@/components/marketing/pricing-card";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { useAuth } from "@/components/providers/auth-provider";
 
-const trustIndicators = ["Supabase Auth", "FastAPI APIs", "OpenAI GPT-4o", "pgvector Search"];
-
 const painPoints = [
   {
     title: "Manual screening slows hiring",
-    description: "Recruiters spend too much time opening CVs, extracting basics, and comparing profiles by hand."
+    description:
+      "Recruiters spend too much time opening CVs, extracting basics, and comparing profiles by hand.",
   },
   {
     title: "Candidate data lives in scattered tools",
-    description: "Profile details, notes, resume content, and matching signals are often disconnected from each other."
+    description:
+      "Profile details, notes, resume content, and matching signals are often disconnected from each other.",
   },
   {
     title: "Matching is subjective and inconsistent",
-    description: "Teams struggle to explain why one candidate fits better than another, especially at scale."
-  }
+    description:
+      "Teams struggle to explain why one candidate fits better than another, especially at scale.",
+  },
 ];
 
 const solutions = [
   {
     title: "Automate intake",
-    description: "Upload resumes once and turn them into structured candidate profiles with searchable context."
+    description:
+      "Upload resumes once and turn them into structured candidate profiles with searchable context.",
   },
   {
     title: "Search by conversation",
-    description: "Ask for skills, job fit, and recruiter insights in natural language instead of scanning files manually."
+    description:
+      "Ask for skills, job fit, and recruiter insights in natural language instead of scanning files manually.",
   },
   {
     title: "Rank with transparency",
-    description: "Compare candidates against real job descriptions with score breakdowns and reasoning."
-  }
+    description:
+      "Compare candidates against real job descriptions with score breakdowns and reasoning.",
+  },
 ];
 
 const features = [
   {
     icon: FileText,
     title: "Resume parsing",
-    description: "Extract candidate details, contact information, skills, education, and certifications from uploaded CVs."
+    description:
+      "Extract candidate details, contact information, skills, education, and certifications from uploaded CVs.",
   },
   {
     icon: BriefcaseBusiness,
     title: "AI matching",
-    description: "Rank candidates against job descriptions using semantic retrieval and weighted scoring."
+    description:
+      "Rank candidates against job descriptions using semantic retrieval and weighted scoring.",
   },
   {
     icon: MessageSquareText,
     title: "Chat-based search",
-    description: "Ask the platform direct recruiting questions and receive streamed, source-aware answers."
+    description:
+      "Ask the platform direct recruiting questions and receive streamed, source-aware answers.",
   },
   {
     icon: WandSparkles,
     title: "Job description generator",
-    description: "Turn a short hiring brief into a structured, recruiter-ready job description."
-  }
+    description:
+      "Turn a short hiring brief into a structured, recruiter-ready job description.",
+  },
 ];
 
 const pricingPlans = [
@@ -83,57 +91,63 @@ const pricingPlans = [
       "Resume upload and parsing",
       "Basic candidate review",
       "Limited AI chat usage",
-      "Single recruiter seat"
+      "Single recruiter seat",
     ],
     ctaLabel: "Get Started",
-    ctaHref: "/signup"
+    ctaHref: "/signup",
   },
   {
     title: "Pro",
     price: "$149/mo",
-    description: "For recruiters and small teams who need matching, chat, and workflow speed.",
+    description:
+      "For recruiters and small teams who need matching, chat, and workflow speed.",
     features: [
       "Unlimited AI chat",
       "JD matching with score breakdown",
       "Smart JD Generator",
-      "Multi-candidate workflow management"
+      "Multi-candidate workflow management",
     ],
     ctaLabel: "Start Pro",
     ctaHref: "/signup",
-    featured: true
+    featured: true,
   },
   {
     title: "Enterprise",
     price: "Custom",
-    description: "For larger hiring teams needing scale, controls, and integrations.",
+    description:
+      "For larger hiring teams needing scale, controls, and integrations.",
     features: [
       "Custom onboarding",
       "Advanced support",
       "Private deployment options",
-      "Integration planning"
+      "Integration planning",
     ],
     ctaLabel: "Talk to Sales",
-    ctaHref: "mailto:support@sefarai.com"
-  }
+    ctaHref: "mailto:support@sefarai.com",
+  },
 ];
 
 const faqs = [
   {
-    question: "Do I need to change my hiring process to use TalentCore AI?",
-    answer: "No. The platform is designed to sit on top of your current sourcing and screening workflow, not replace it."
+    question: "Do I need to change my hiring process to use AI Recruiter?",
+    answer:
+      "No. The platform is designed to sit on top of your current sourcing and screening workflow, not replace it.",
   },
   {
     question: "Can recruiters search candidates using natural language?",
-    answer: "Yes. Recruiters can ask the system questions about skills, experience, location, and fit using chat-based search."
+    answer:
+      "Yes. Recruiters can ask the system questions about skills, experience, location, and fit using chat-based search.",
   },
   {
     question: "How does candidate matching work?",
-    answer: "The backend parses the job description, retrieves relevant candidate chunks semantically, and scores candidates using skills, experience, education, and certifications."
+    answer:
+      "The backend parses the job description, retrieves relevant candidate chunks semantically, and scores candidates using skills, experience, education, and certifications.",
   },
   {
     question: "Is recruiter data isolated?",
-    answer: "Yes. Authentication uses Supabase Auth and recruiter data is scoped with row-level security and recruiter-specific access control."
-  }
+    answer:
+      "Yes. Authentication uses Supabase Auth and recruiter data is scoped with row-level security and recruiter-specific access control.",
+  },
 ];
 
 export default function LandingPage() {
@@ -150,8 +164,12 @@ export default function LandingPage() {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-lg font-semibold tracking-tight text-slate-950">TalentCore AI</p>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Recruitment Intelligence</p>
+              <p className="text-lg font-semibold tracking-tight text-slate-950">
+                AI Recruiter
+              </p>
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                Recruitment Intelligence
+              </p>
             </div>
           </Link>
 
@@ -196,8 +214,9 @@ export default function LandingPage() {
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-                Automate resume intake, search candidates through conversation, and match job descriptions faster with
-                a clean recruiter-focused workflow.
+                Automate resume intake, search candidates through conversation,
+                and match job descriptions faster with a clean recruiter-focused
+                workflow.
               </p>
 
               <div className="mt-10 flex flex-wrap items-center gap-3">
@@ -215,17 +234,6 @@ export default function LandingPage() {
                   See Demo
                 </Link>
               </div>
-
-              <div className="mt-10 flex flex-wrap gap-3">
-                {trustIndicators.map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex items-center rounded-full border border-orange-100 bg-white/80 px-4 py-2 text-sm text-slate-600 shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
             </motion.div>
 
             <motion.div
@@ -235,21 +243,6 @@ export default function LandingPage() {
             >
               <ChatPreview />
             </motion.div>
-          </div>
-        </section>
-
-        <section className="border-y border-slate-200/70 bg-white/75">
-          <div className="mx-auto max-w-7xl px-6 py-6 lg:px-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <p className="text-sm font-medium text-slate-600">
-                Built for recruiter teams who need faster shortlists without losing clarity or control.
-              </p>
-              <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-                <span className="rounded-full bg-slate-100 px-4 py-2">Structured candidate profiles</span>
-                <span className="rounded-full bg-slate-100 px-4 py-2">AI chat over uploaded CVs</span>
-                <span className="rounded-full bg-slate-100 px-4 py-2">Transparent JD matching</span>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -270,8 +263,12 @@ export default function LandingPage() {
                 transition={{ duration: 0.4, delay: index * 0.06 }}
                 className="marketing-card rounded-[28px] p-6"
               >
-                <p className="text-lg font-semibold text-slate-950">{item.title}</p>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
+                <p className="text-lg font-semibold text-slate-950">
+                  {item.title}
+                </p>
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  {item.description}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -282,7 +279,7 @@ export default function LandingPage() {
             <SectionHeading
               eyebrow="The Solution"
               title="An AI assistant that helps recruiters move from resumes to decisions faster."
-              description="TalentCore AI keeps candidate context, structured profile data, recruiter chat, and job-fit reasoning connected in one flow."
+              description="AI Recruiter keeps candidate context, structured profile data, recruiter chat, and job-fit reasoning connected in one flow."
             />
 
             <div className="mt-12 grid gap-5 md:grid-cols-3">
@@ -298,8 +295,12 @@ export default function LandingPage() {
                   <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_12px_24px_rgba(249,115,22,0.22)]">
                     <ChevronRight className="h-5 w-5" />
                   </div>
-                  <p className="mt-5 text-lg font-semibold text-slate-950">{item.title}</p>
-                  <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
+                  <p className="mt-5 text-lg font-semibold text-slate-950">
+                    {item.title}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    {item.description}
+                  </p>
                 </motion.div>
               ))}
             </div>
@@ -328,8 +329,12 @@ export default function LandingPage() {
                   <div className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 text-orange-600">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <p className="mt-5 text-lg font-semibold text-slate-950">{feature.title}</p>
-                  <p className="mt-3 text-sm leading-7 text-slate-600">{feature.description}</p>
+                  <p className="mt-5 text-lg font-semibold text-slate-950">
+                    {feature.title}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
+                    {feature.description}
+                  </p>
                 </motion.div>
               );
             })}
@@ -353,10 +358,20 @@ export default function LandingPage() {
             >
               <div className="grid gap-4 lg:grid-cols-[220px,1fr]">
                 <div className="rounded-[24px] bg-slate-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Workspace</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Workspace
+                  </p>
                   <div className="mt-4 space-y-3">
-                    {["Document Intake", "Candidates", "AI Chat", "JD Matching"].map((item) => (
-                      <div key={item} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
+                    {[
+                      "Document Intake",
+                      "Candidates",
+                      "AI Chat",
+                      "JD Matching",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700"
+                      >
                         {item}
                       </div>
                     ))}
@@ -366,14 +381,23 @@ export default function LandingPage() {
                 <div className="grid gap-4">
                   <div className="grid gap-4 md:grid-cols-[1.1fr,0.9fr]">
                     <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Candidate View</p>
-                      <p className="mt-3 text-lg font-semibold text-slate-950">Frontend Engineer</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Candidate View
+                      </p>
+                      <p className="mt-3 text-lg font-semibold text-slate-950">
+                        Frontend Engineer
+                      </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {["React", "Next.js", "TypeScript", "Figma"].map((skill) => (
-                          <span key={skill} className="rounded-full bg-orange-50 px-3 py-1 text-sm text-orange-700">
-                            {skill}
-                          </span>
-                        ))}
+                        {["React", "Next.js", "TypeScript", "Figma"].map(
+                          (skill) => (
+                            <span
+                              key={skill}
+                              className="rounded-full bg-orange-50 px-3 py-1 text-sm text-orange-700"
+                            >
+                              {skill}
+                            </span>
+                          ),
+                        )}
                       </div>
                       <div className="mt-5 space-y-3 text-sm text-slate-600">
                         <p>Current position: Senior Frontend Engineer</p>
@@ -383,7 +407,9 @@ export default function LandingPage() {
                     </div>
 
                     <div className="rounded-[24px] border border-slate-200 bg-slate-950 p-5 text-white shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">Match Summary</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
+                        Match Summary
+                      </p>
                       <p className="mt-3 text-3xl font-semibold">89%</p>
                       <div className="mt-5 space-y-3 text-sm text-white/72">
                         <p>Strong React and Next.js overlap</p>
@@ -394,14 +420,17 @@ export default function LandingPage() {
                   </div>
 
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">AI Assistant</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      AI Assistant
+                    </p>
                     <div className="mt-4 grid gap-3 md:grid-cols-[0.4fr,0.6fr]">
                       <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
                         Find me a frontend developer with product experience
                       </div>
                       <div className="rounded-2xl bg-orange-50 px-4 py-3 text-sm text-slate-700">
-                        I found strong matches with React, Next.js, and product-led experience. Two candidates also
-                        have fintech background.
+                        I found strong matches with React, Next.js, and
+                        product-led experience. Two candidates also have fintech
+                        background.
                       </div>
                     </div>
                   </div>
@@ -437,11 +466,16 @@ export default function LandingPage() {
 
             <div className="mt-12 space-y-4">
               {faqs.map((item) => (
-                <details key={item.question} className="marketing-card rounded-[24px] p-6">
+                <details
+                  key={item.question}
+                  className="marketing-card rounded-[24px] p-6"
+                >
                   <summary className="cursor-pointer list-none text-lg font-semibold text-slate-950">
                     {item.question}
                   </summary>
-                  <p className="mt-4 pr-6 text-sm leading-7 text-slate-600">{item.answer}</p>
+                  <p className="mt-4 pr-6 text-sm leading-7 text-slate-600">
+                    {item.answer}
+                  </p>
                 </details>
               ))}
             </div>
@@ -459,7 +493,8 @@ export default function LandingPage() {
                   Build a faster, clearer recruiting workflow with AI.
                 </h3>
                 <p className="mt-5 text-base leading-8 text-slate-600">
-                  Bring resume intake, candidate search, AI chat, and job matching into one focused product.
+                  Bring resume intake, candidate search, AI chat, and job
+                  matching into one focused product.
                 </p>
               </div>
 
@@ -492,22 +527,33 @@ export default function LandingPage() {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold tracking-tight text-slate-950">TalentCore AI</p>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recruitment Intelligence</p>
+                  <p className="text-lg font-semibold tracking-tight text-slate-950">
+                    AI Recruiter
+                  </p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Recruitment Intelligence
+                  </p>
                 </div>
               </div>
               <p className="mt-5 max-w-sm text-sm leading-7 text-slate-600">
-                AI-powered recruiting workflows for resume intake, candidate intelligence, recruiter chat, and transparent job matching.
+                AI-powered recruiting workflows for resume intake, candidate
+                intelligence, recruiter chat, and transparent job matching.
               </p>
             </div>
 
             <div>
               <p className="text-sm font-semibold text-slate-950">Product</p>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <Link href="#features" className="block transition hover:text-slate-950">
+                <Link
+                  href="#features"
+                  className="block transition hover:text-slate-950"
+                >
                   Features
                 </Link>
-                <Link href="#pricing" className="block transition hover:text-slate-950">
+                <Link
+                  href="#pricing"
+                  className="block transition hover:text-slate-950"
+                >
                   Pricing
                 </Link>
               </div>
@@ -516,10 +562,16 @@ export default function LandingPage() {
             <div>
               <p className="text-sm font-semibold text-slate-950">Company</p>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <Link href="#demo" className="block transition hover:text-slate-950">
+                <Link
+                  href="#demo"
+                  className="block transition hover:text-slate-950"
+                >
                   About
                 </Link>
-                <a href="mailto:support@sefarai.com" className="block transition hover:text-slate-950">
+                <a
+                  href="mailto:support@sefarai.com"
+                  className="block transition hover:text-slate-950"
+                >
                   Contact
                 </a>
               </div>
@@ -528,10 +580,16 @@ export default function LandingPage() {
             <div>
               <p className="text-sm font-semibold text-slate-950">Resources</p>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <Link href="/login" className="block transition hover:text-slate-950">
+                <Link
+                  href="/login"
+                  className="block transition hover:text-slate-950"
+                >
                   Docs
                 </Link>
-                <Link href="#faq" className="block transition hover:text-slate-950">
+                <Link
+                  href="#faq"
+                  className="block transition hover:text-slate-950"
+                >
                   Blog
                 </Link>
               </div>

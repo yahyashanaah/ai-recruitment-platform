@@ -1,8 +1,9 @@
-# TalentCore AI Backend
+# AI Recruiter Backend
 
 FastAPI backend for recruiter-scoped CV ingestion, RAG chat, Smart JD generation, and JD matching using Supabase Postgres + pgvector.
 
 ## Stack
+
 - Python 3.11+
 - FastAPI
 - Supabase Auth
@@ -13,17 +14,20 @@ FastAPI backend for recruiter-scoped CV ingestion, RAG chat, Smart JD generation
 - Pydantic v2
 
 ## Setup
+
 ```bash
 cd backend/ai_recruitment
 pip install -r requirements.txt
 ```
 
 Apply the Supabase schema:
+
 ```sql
 -- run backend/ai_recruitment/schema.sql in the Supabase SQL editor
 ```
 
 Configure environment variables:
+
 ```env
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -38,14 +42,17 @@ CORS_ALLOW_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
 ```
 
 Run:
+
 ```bash
 uvicorn app.main:app --reload
 ```
 
 ## API Base
+
 `/api/v1`
 
 ## Endpoints
+
 - `GET /auth/me`
 - `POST /documents/upload`
 - `DELETE /documents/file/{file_name}`
@@ -65,7 +72,9 @@ uvicorn app.main:app --reload
 - `GET /health`
 
 ## Auth
+
 Send the Supabase access token in the `Authorization` header:
+
 ```http
 Authorization: Bearer <supabase_access_token>
 ```
