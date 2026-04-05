@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Filter, Trash2, UserRoundSearch } from "lucide-react";
 import { toast } from "sonner";
 
+import { CandidateCard } from "@/components/candidates/candidate-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHeader } from "@/components/common/page-header";
-import { ScoreRing } from "@/components/common/score-ring";
 import { SectionToolbar } from "@/components/common/section-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import {
   listCandidates
 } from "@/lib/api/client";
 import type { CandidateProfile } from "@/lib/api/types";
-import { formatDate, getInitials } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 function computeProfileScore(candidate: CandidateProfile) {
   return Math.min(
@@ -202,69 +202,15 @@ export default function CandidatesPage() {
             const score = computeProfileScore(candidate);
 
             return (
-              <Card key={candidate.candidate_id} className={isSelected ? "border-orange-200" : undefined}>
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <button
-                      type="button"
-                      onClick={() => toggleSelect(candidate.candidate_id)}
-                      aria-label={`Select ${candidate.name}`}
-                      className={`mt-1 h-5 w-5 rounded border transition ${
-                        isSelected ? "border-orange-500 bg-orange-500" : "border-slate-300 bg-white"
-                      }`}
-                    >
-                      <span className="sr-only">Select candidate</span>
-                    </button>
-
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-orange-100 bg-orange-50 text-base font-semibold text-orange-700">
-                      {getInitials(candidate.name)}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <p className="text-lg font-semibold text-slate-950">{candidate.name}</p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            {candidate.current_position || "Candidate profile"}
-                          </p>
-                        </div>
-                        <ScoreRing value={score} label="Fit" size={76} />
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Badge variant="outline" className="normal-case tracking-normal">
-                          {candidate.location || "Location not available"}
-                        </Badge>
-                        <Badge variant="outline" className="normal-case tracking-normal">
-                          {candidate.years_of_experience} years experience
-                        </Badge>
-                        <Badge variant="secondary" className="normal-case tracking-normal">
-                          {formatDate(candidate.created_at ?? Date.now())}
-                        </Badge>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {candidate.skills.slice(0, 3).map((skill) => (
-                          <Badge key={skill} className="normal-case tracking-normal">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-
-                      <p className="mt-4 text-sm leading-7 text-slate-600">Source file: {candidate.file_name}</p>
-
-                      <div className="mt-5 flex flex-wrap gap-3">
-                        <Button variant="secondary" onClick={() => setActiveCandidate(candidate)}>
-                          View details
-                        </Button>
-                        <Button variant="outline" onClick={() => void runDelete(candidate.candidate_id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <CandidateCard
+                key={candidate.candidate_id}
+                candidate={candidate}
+                score={score}
+                selected={isSelected}
+                onSelect={() => toggleSelect(candidate.candidate_id)}
+                onView={() => setActiveCandidate(candidate)}
+                onDelete={() => void runDelete(candidate.candidate_id)}
+              />
             );
           })}
         </div>

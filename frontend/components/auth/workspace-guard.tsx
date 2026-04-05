@@ -27,9 +27,9 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-orange-100 bg-orange-50 text-orange-600">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <p className="font-display mt-6 text-2xl text-slate-950">Checking recruiter session</p>
+          <p className="font-display mt-6 text-2xl text-slate-950">Loading workspace</p>
           <p className="mt-3 text-sm leading-7 text-slate-600">
-            Validating your Supabase session and loading the authenticated workspace.
+            Preparing your recruiter workspace.
           </p>
         </div>
       </div>

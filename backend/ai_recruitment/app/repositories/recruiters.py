@@ -15,18 +15,8 @@ class RecruiterRepository:
     def get_auth_user(self, access_token: str) -> Any:
         return self._client_factory.admin().auth.get_user(access_token)
 
-    def upsert_from_auth_user(self, access_token: str, auth_user: Any) -> dict[str, Any]:
+    def get_by_id(self, access_token: str, recruiter_id: str) -> dict[str, Any] | None:
         client = self._client_factory.for_access_token(access_token)
-        recruiter_id = str(getattr(auth_user, "id"))
-        email = str(getattr(auth_user, "email", "") or "")
-        payload = {
-            "id": recruiter_id,
-            "full_name": _extract_full_name(auth_user),
-            "email": email,
-            "last_login": datetime.now(UTC).isoformat(),
-        }
-
-        client.table("recruiters").upsert(payload, on_conflict="id").execute()
         response = (
             client.table("recruiters")
             .select("*")
@@ -36,10 +26,31 @@ class RecruiterRepository:
         )
 
         rows = response.data or []
-        if not rows:
-            raise RuntimeError("Failed to upsert recruiter profile.")
+        return rows[0] if rows else None
 
-        return rows[0]
+    def ensure_from_auth_user(self, access_token: str, auth_user: Any) -> dict[str, Any]:
+        recruiter_id = str(getattr(auth_user, "id"))
+        existing = self.get_by_id(access_token, recruiter_id)
+        if existing:
+            return existing
+
+        client = self._client_factory.for_access_token(access_token)
+        email = str(getattr(auth_user, "email", "") or "")
+        payload = {
+            "id": recruiter_id,
+            "full_name": _extract_full_name(auth_user),
+            "email": email,
+            "last_login": datetime.now(UTC).isoformat(),
+        }
+        response = client.table("recruiters").upsert(payload, on_conflict="id").execute()
+        rows = response.data or []
+        if rows:
+            return rows[0]
+
+        created = self.get_by_id(access_token, recruiter_id)
+        if not created:
+            raise RuntimeError("Failed to ensure recruiter profile.")
+        return created
 
 
 def _extract_full_name(auth_user: Any) -> str:

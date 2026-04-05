@@ -10,7 +10,6 @@ import {
   type ReactNode
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { toast } from "sonner";
 
 import {
   AUTH_REQUIRED_EVENT,
@@ -70,10 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const bootstrap = async () => {
       try {
         await refreshRecruiter();
-      } catch (error) {
-        if (!cancelled && !isAuthenticationRequiredError(error)) {
-          toast.error(error instanceof Error ? error.message : "Unable to load recruiter session");
-        }
+      } catch {
+        // keep background session checks silent
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -115,9 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch((error) => {
           if (!cancelled) {
             setRecruiter(null);
-            if (!isAuthenticationRequiredError(error)) {
-              toast.error(error instanceof Error ? error.message : "Unable to load recruiter session");
-            }
+            void error;
           }
         })
         .finally(() => {

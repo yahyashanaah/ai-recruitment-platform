@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 class EmbeddingService:
     """Sentence-transformers embedding service for pgvector storage."""
 
@@ -21,3 +23,9 @@ class EmbeddingService:
             convert_to_numpy=True,
         )
         return [vector.tolist() for vector in vectors]
+
+    async def embed_query_async(self, text: str) -> list[float]:
+        return await asyncio.to_thread(self.embed_query, text)
+
+    async def embed_documents_async(self, texts: list[str]) -> list[list[float]]:
+        return await asyncio.to_thread(self.embed_documents, texts)

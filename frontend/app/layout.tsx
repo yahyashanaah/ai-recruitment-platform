@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   description:
     "Enterprise-grade AI Recruitment Intelligence Platform for document intake, candidate intelligence, AI chat, JD matching, and Smart JD generation.",
   metadataBase: new URL("https://talentcore.ai"),
+  icons: {
+    icon: "/Logo-07.svg",
+    shortcut: "/Logo-07.svg",
+    apple: "/Logo-07.svg",
+  },
 };
 
 export default function RootLayout({

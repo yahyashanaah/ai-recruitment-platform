@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, Check, Sparkles } from "lucide-react";
 
+import { BrandLogo } from "@/components/common/brand-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,17 +87,7 @@ export default function PricingPage() {
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_14px_28px_rgba(249,115,22,0.22)]">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
-                AI Recruiter
-              </p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-                Recruitment Intelligence
-              </p>
-            </div>
+            <BrandLogo size="md" priority />
           </Link>
 
           <Link

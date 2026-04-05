@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from io import BytesIO
 from typing import List
@@ -27,13 +28,13 @@ async def load_document(upload_file: UploadFile) -> List[LoadedPage]:
         raise ValueError(f"File '{file_name}' is empty.")
 
     if extension == "pdf":
-        return _load_pdf(payload)
+        return await asyncio.to_thread(_load_pdf, payload)
 
     if extension == "docx":
-        return _load_docx(payload)
+        return await asyncio.to_thread(_load_docx, payload)
 
     if extension in {"txt", "text"}:
-        return _load_txt(payload)
+        return await asyncio.to_thread(_load_txt, payload)
 
     if extension == "doc":
         raise ValueError(

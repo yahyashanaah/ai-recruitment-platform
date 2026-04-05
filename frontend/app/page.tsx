@@ -9,11 +9,11 @@ import {
   FileText,
   Linkedin,
   MessageSquareText,
-  Sparkles,
   Twitter,
   WandSparkles,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/common/brand-logo";
 import { ChatPreview } from "@/components/marketing/chat-preview";
 import { PricingCard } from "@/components/marketing/pricing-card";
 import { SectionHeading } from "@/components/marketing/section-heading";
@@ -160,17 +160,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_14px_28px_rgba(249,115,22,0.24)]">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold tracking-tight text-slate-950">
-                AI Recruiter
-              </p>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                Recruitment Intelligence
-              </p>
-            </div>
+            <BrandLogo size="md" priority />
           </Link>
 
           <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex">
@@ -523,17 +513,7 @@ export default function LandingPage() {
           <div className="grid gap-10 lg:grid-cols-[1.2fr,1fr,1fr,1fr]">
             <div>
               <div className="flex items-center gap-3">
-                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_14px_28px_rgba(249,115,22,0.22)]">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-lg font-semibold tracking-tight text-slate-950">
-                    AI Recruiter
-                  </p>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Recruitment Intelligence
-                  </p>
-                </div>
+                <BrandLogo size="md" />
               </div>
               <p className="mt-5 max-w-sm text-sm leading-7 text-slate-600">
                 AI-powered recruiting workflows for resume intake, candidate

@@ -1,15 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  BriefcaseBusiness,
-  MessageSquareText,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, MessageSquareText, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { BrandLogo } from "@/components/common/brand-logo";
 import {
   Card,
   CardContent,
@@ -51,17 +46,7 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
       <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
         <div className="hidden lg:block">
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_14px_28px_rgba(249,115,22,0.22)]">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
-                AI Recruiter
-              </p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-                Recruitment Intelligence
-              </p>
-            </div>
+            <BrandLogo size="lg" priority />
           </Link>
 
           <div className="mt-10 max-w-xl">
@@ -114,17 +99,7 @@ export function AuthShell({ title, description, children }: AuthShellProps) {
         <div className="w-full lg:justify-self-end lg:max-w-md">
           <div className="mb-8 flex items-center justify-center lg:hidden">
             <Link href="/" className="flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_14px_28px_rgba(249,115,22,0.22)]">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
-                  AI Recruiter
-                </p>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-                  Recruitment Intelligence
-                </p>
-              </div>
+              <BrandLogo size="md" priority />
             </Link>
           </div>
 

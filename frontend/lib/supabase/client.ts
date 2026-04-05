@@ -45,6 +45,20 @@ export async function getSupabaseAccessToken() {
   return session?.access_token ?? null;
 }
 
+export async function refreshSupabaseAccessToken() {
+  const client = getSupabaseBrowserClient();
+  const {
+    data: { session },
+    error
+  } = await client.auth.refreshSession();
+
+  if (error) {
+    return null;
+  }
+
+  return session?.access_token ?? null;
+}
+
 export async function clearSupabaseBrowserSession() {
   try {
     const client = getSupabaseBrowserClient();

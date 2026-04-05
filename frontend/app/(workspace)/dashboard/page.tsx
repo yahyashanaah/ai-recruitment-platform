@@ -164,7 +164,7 @@ export default function DashboardPage() {
           return (
             <Card key={item.label}>
               <CardContent className="p-6">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 pt-4">
                   <div>
                     <p className="text-sm font-medium text-slate-500">{item.label}</p>
                     <p className="font-display mt-3 text-3xl font-semibold tracking-tight text-slate-950">

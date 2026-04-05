@@ -11,12 +11,12 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
-  Sparkles,
   UserCircle2,
   UsersRound,
   WandSparkles,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/common/brand-logo";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -138,17 +138,7 @@ export function AppShell({ children }: AppShellProps) {
             href="/dashboard"
             className="mb-8 flex items-center gap-3 rounded-2xl px-1 py-2"
           >
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-[0_14px_28px_rgba(249,115,22,0.22)]">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-semibold tracking-tight text-slate-950">
-                AI Recruiter
-              </p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-                Recruitment Intelligence
-              </p>
-            </div>
+            <BrandLogo size="md" priority />
           </Link>
 
           <nav className="grid gap-2">

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from uuid import uuid4
 
@@ -69,7 +70,9 @@ class IngestionService:
                 if not chunks:
                     raise ValueError("No chunkable content found in the document.")
 
-                embeddings = self._embedding_service.embed_documents([chunk.page_content for chunk in chunks])
+                embeddings = await self._embedding_service.embed_documents_async(
+                    [chunk.page_content for chunk in chunks]
+                )
                 candidate_payload = {
                     "id": candidate_id,
                     "file_name": file_name,
@@ -100,7 +103,8 @@ class IngestionService:
                     for chunk, embedding in zip(chunks, embeddings, strict=True)
                 ]
 
-                saved_candidate_id = self._candidate_repository.ingest_candidate_with_chunks(
+                saved_candidate_id = await asyncio.to_thread(
+                    self._candidate_repository.ingest_candidate_with_chunks,
                     access_token=recruiter.access_token,
                     recruiter_id=recruiter.id,
                     candidate_payload=candidate_payload,

@@ -8,6 +8,24 @@ from app.db.client import SupabaseClientFactory
 class CandidateRepository:
     """Supabase repository for recruiter-scoped candidate records."""
 
+    _LIST_COLUMNS = ",".join(
+        [
+            "id",
+            "file_name",
+            "name",
+            "linkedin",
+            "phone_number",
+            "gmail",
+            "location",
+            "years_of_experience",
+            "skills",
+            "education",
+            "current_position",
+            "certifications",
+            "created_at",
+        ]
+    )
+
     def __init__(self, client_factory: SupabaseClientFactory) -> None:
         self._client_factory = client_factory
 
@@ -57,7 +75,7 @@ class CandidateRepository:
         client = self._client_factory.for_access_token(access_token)
         query = (
             client.table("candidates")
-            .select("*", count="exact")
+            .select(self._LIST_COLUMNS, count="exact")
             .eq("recruiter_id", recruiter_id)
             .order("created_at", desc=True)
         )
