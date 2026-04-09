@@ -2,14 +2,12 @@
 
 import { Check, Eye, Trash2 } from "lucide-react";
 
-import { ScoreRing } from "@/components/common/score-ring";
 import { Button } from "@/components/ui/button";
 import type { CandidateProfile } from "@/lib/api/types";
 import { cn, getInitials } from "@/lib/utils";
 
 interface CandidateCardProps {
   candidate: CandidateProfile;
-  score: number;
   selected: boolean;
   onSelect: () => void;
   onView: () => void;
@@ -18,7 +16,6 @@ interface CandidateCardProps {
 
 export function CandidateCard({
   candidate,
-  score,
   selected,
   onSelect,
   onView,
@@ -41,7 +38,7 @@ export function CandidateCard({
         selected && "ring-2 ring-orange-200 shadow-[0_18px_36px_rgba(249,115,22,0.10)]"
       )}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <button
             type="button"
@@ -66,10 +63,6 @@ export function CandidateCard({
             <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950">{candidate.name}</h3>
             <p className="mt-1 truncate text-sm text-slate-500">{role}</p>
           </div>
-        </div>
-
-        <div className="shrink-0">
-          <ScoreRing value={score} label="Fit" size={64} />
         </div>
       </div>
 

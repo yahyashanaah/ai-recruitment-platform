@@ -38,20 +38,33 @@ create table if not exists public.candidate_chunks (
     created_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.recruiter_activity (
+    id uuid primary key default gen_random_uuid(),
+    recruiter_id uuid not null references public.recruiters (id) on delete cascade,
+    activity_type text not null check (activity_type in ('chat', 'match')),
+    metadata jsonb not null default '{}'::jsonb,
+    occurred_at timestamptz not null default timezone('utc', now())
+);
+
 create index if not exists recruiters_email_idx on public.recruiters (email);
 create index if not exists candidates_recruiter_id_idx on public.candidates (recruiter_id);
 create index if not exists candidates_created_at_idx on public.candidates (created_at desc);
 create index if not exists candidates_skills_gin_idx on public.candidates using gin (skills jsonb_path_ops);
 create index if not exists candidate_chunks_recruiter_id_idx on public.candidate_chunks (recruiter_id);
 create index if not exists candidate_chunks_candidate_id_idx on public.candidate_chunks (candidate_id);
+create index if not exists candidate_chunks_recruiter_candidate_id_idx on public.candidate_chunks (recruiter_id, candidate_id);
 create index if not exists candidate_chunks_file_name_idx on public.candidate_chunks (file_name);
 create index if not exists candidate_chunks_embedding_hnsw_idx
     on public.candidate_chunks
     using hnsw (embedding extensions.vector_cosine_ops);
+create index if not exists recruiter_activity_recruiter_id_idx on public.recruiter_activity (recruiter_id);
+create index if not exists recruiter_activity_recruiter_type_occurred_idx
+    on public.recruiter_activity (recruiter_id, activity_type, occurred_at desc);
 
 alter table public.recruiters enable row level security;
 alter table public.candidates enable row level security;
 alter table public.candidate_chunks enable row level security;
+alter table public.recruiter_activity enable row level security;
 
 drop policy if exists recruiters_select_own on public.recruiters;
 create policy recruiters_select_own
@@ -119,6 +132,24 @@ create policy candidate_chunks_update_own
 drop policy if exists candidate_chunks_delete_own on public.candidate_chunks;
 create policy candidate_chunks_delete_own
     on public.candidate_chunks
+    for delete
+    using (auth.uid() = recruiter_id);
+
+drop policy if exists recruiter_activity_select_own on public.recruiter_activity;
+create policy recruiter_activity_select_own
+    on public.recruiter_activity
+    for select
+    using (auth.uid() = recruiter_id);
+
+drop policy if exists recruiter_activity_insert_own on public.recruiter_activity;
+create policy recruiter_activity_insert_own
+    on public.recruiter_activity
+    for insert
+    with check (auth.uid() = recruiter_id);
+
+drop policy if exists recruiter_activity_delete_own on public.recruiter_activity;
+create policy recruiter_activity_delete_own
+    on public.recruiter_activity
     for delete
     using (auth.uid() = recruiter_id);
 

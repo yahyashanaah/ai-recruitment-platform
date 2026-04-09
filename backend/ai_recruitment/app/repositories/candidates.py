@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from app.db.client import SupabaseClientFactory
@@ -28,6 +29,41 @@ class CandidateRepository:
 
     def __init__(self, client_factory: SupabaseClientFactory) -> None:
         self._client_factory = client_factory
+
+    @staticmethod
+    def _apply_filters(
+        query: Any,
+        *,
+        skills: list[str] | None = None,
+        min_experience: float | None = None,
+        location: str | None = None,
+        education: str | None = None,
+        certifications: list[str] | None = None,
+        candidate_ids: list[str] | None = None,
+        file_name: str | None = None,
+        created_from: datetime | None = None,
+    ) -> Any:
+        if candidate_ids is not None:
+            if not candidate_ids:
+                return None
+            query = query.in_("id", candidate_ids)
+
+        if skills:
+            query = query.contains("skills", skills)
+        if min_experience is not None:
+            query = query.gte("years_of_experience", min_experience)
+        if location:
+            query = query.ilike("location", f"%{location}%")
+        if education:
+            query = query.ilike("education", f"%{education}%")
+        if certifications:
+            query = query.contains("certifications", certifications)
+        if file_name:
+            query = query.eq("file_name", file_name)
+        if created_from is not None:
+            query = query.gte("created_at", created_from.isoformat())
+
+        return query
 
     def ingest_candidate_with_chunks(
         self,
@@ -73,30 +109,24 @@ class CandidateRepository:
         file_name: str | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
         client = self._client_factory.for_access_token(access_token)
-        query = (
+        base_query = (
             client.table("candidates")
             .select(self._LIST_COLUMNS, count="exact")
             .eq("recruiter_id", recruiter_id)
             .order("created_at", desc=True)
         )
-
-        if candidate_ids is not None:
-            if not candidate_ids:
-                return [], 0
-            query = query.in_("id", candidate_ids)
-
-        if skills:
-            query = query.contains("skills", skills)
-        if min_experience is not None:
-            query = query.gte("years_of_experience", min_experience)
-        if location:
-            query = query.ilike("location", f"%{location}%")
-        if education:
-            query = query.ilike("education", f"%{education}%")
-        if certifications:
-            query = query.contains("certifications", certifications)
-        if file_name:
-            query = query.eq("file_name", file_name)
+        query = self._apply_filters(
+            base_query,
+            skills=skills,
+            min_experience=min_experience,
+            location=location,
+            education=education,
+            certifications=certifications,
+            candidate_ids=candidate_ids,
+            file_name=file_name,
+        )
+        if query is None:
+            return [], 0
 
         if candidate_ids is None:
             response = query.range(offset, offset + limit - 1).execute()
@@ -111,6 +141,51 @@ class CandidateRepository:
         order_map = {candidate_id: position for position, candidate_id in enumerate(candidate_ids)}
         rows.sort(key=lambda row: order_map.get(str(row["id"]), len(order_map)))
         return rows[offset : offset + limit], total
+
+    def list_candidate_ids(
+        self,
+        access_token: str,
+        recruiter_id: str,
+        *,
+        skills: list[str] | None = None,
+        min_experience: float | None = None,
+        location: str | None = None,
+        education: str | None = None,
+        certifications: list[str] | None = None,
+        file_name: str | None = None,
+    ) -> list[str]:
+        client = self._client_factory.for_access_token(access_token)
+        base_query = client.table("candidates").select("id").eq("recruiter_id", recruiter_id)
+        query = self._apply_filters(
+            base_query,
+            skills=skills,
+            min_experience=min_experience,
+            location=location,
+            education=education,
+            certifications=certifications,
+            file_name=file_name,
+        )
+        if query is None:
+            return []
+
+        response = query.execute()
+        return [str(row["id"]) for row in (response.data or []) if row.get("id")]
+
+    def count_candidates(
+        self,
+        access_token: str,
+        recruiter_id: str,
+        *,
+        created_from: datetime | None = None,
+    ) -> int:
+        client = self._client_factory.for_access_token(access_token)
+        base_query = client.table("candidates").select("id", count="exact").eq("recruiter_id", recruiter_id)
+        query = self._apply_filters(base_query, created_from=created_from)
+        if query is None:
+            return 0
+
+        response = query.limit(1).execute()
+        return int(response.count or 0)
 
     def get_candidate(
         self,

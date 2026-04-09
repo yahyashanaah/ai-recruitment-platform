@@ -11,7 +11,7 @@ router = APIRouter(tags=["Candidates"])
 
 
 @router.get("/candidates", response_model=list[CandidateProfileResponse])
-def get_candidates(
+async def get_candidates(
     request: Request,
     response: Response,
     skills: list[str] | None = Query(default=None),
@@ -26,7 +26,7 @@ def get_candidates(
 ) -> list[CandidateProfileResponse]:
     """Return recruiter-owned structured candidate profiles with filtering and hybrid search."""
     candidate_service: CandidateService = request.app.state.candidate_service
-    candidates, total = candidate_service.list_candidates(
+    candidates, total = await candidate_service.list_candidates(
         recruiter=current_recruiter,
         limit=limit,
         offset=offset,
@@ -79,4 +79,3 @@ def delete_candidate(
     """Delete a recruiter-owned candidate and cascaded chunks."""
     candidate_service: CandidateService = request.app.state.candidate_service
     return candidate_service.delete_candidate(recruiter=current_recruiter, candidate_id=candidate_id)
-

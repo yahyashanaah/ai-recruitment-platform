@@ -307,6 +307,62 @@ class MatchJDResponse(BaseModel):
     top_candidates: list[CandidateMatchResponse] = Field(default_factory=list)
 
 
+class DashboardRecentCandidateResponse(BaseModel):
+    """Compact candidate payload for dashboard recent lists."""
+
+    candidate_id: str
+    name: str
+    file_name: str
+    current_position: str = ""
+    location: str = ""
+    created_at: datetime | None = None
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, Any]) -> Self:
+        return cls(
+            candidate_id=str(record.get("candidate_id") or record.get("id") or ""),
+            name=str(record.get("name") or "Unknown"),
+            file_name=str(record.get("file_name") or ""),
+            current_position=str(record.get("current_position") or ""),
+            location=str(record.get("location") or ""),
+            created_at=record.get("created_at"),
+        )
+
+
+class DashboardActivityResponse(BaseModel):
+    """Recent recruiter activity item for dashboard feeds."""
+
+    activity_type: str
+    occurred_at: datetime | None = None
+    candidate_id: str | None = None
+    candidate_name: str = ""
+    file_name: str = ""
+    detail: str = ""
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, Any]) -> Self:
+        candidate_id = record.get("candidate_id")
+        return cls(
+            activity_type=str(record.get("activity_type") or ""),
+            occurred_at=record.get("occurred_at") or record.get("created_at"),
+            candidate_id=str(candidate_id) if candidate_id else None,
+            candidate_name=str(record.get("candidate_name") or record.get("name") or ""),
+            file_name=str(record.get("file_name") or ""),
+            detail=str(record.get("detail") or ""),
+        )
+
+
+class DashboardSummaryResponse(BaseModel):
+    """Single dashboard response optimized for one round-trip loading."""
+
+    total_candidates: int
+    uploads_this_month: int
+    match_runs_this_month: int
+    chat_queries_this_month: int
+    recent_candidates: list[DashboardRecentCandidateResponse] = Field(default_factory=list)
+    recent_activity: list[DashboardActivityResponse] = Field(default_factory=list)
+
+
 class DeleteCandidateResponse(BaseModel):
     """Candidate deletion response."""
 

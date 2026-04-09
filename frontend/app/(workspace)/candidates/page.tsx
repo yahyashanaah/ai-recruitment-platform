@@ -28,13 +28,6 @@ import {
 import type { CandidateProfile } from "@/lib/api/types";
 import { formatDate } from "@/lib/utils";
 
-function computeProfileScore(candidate: CandidateProfile) {
-  return Math.min(
-    98,
-    42 + candidate.skills.length * 5 + candidate.certifications.length * 2 + candidate.years_of_experience * 3
-  );
-}
-
 export default function CandidatesPage() {
   const [loading, setLoading] = useState(true);
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
@@ -199,13 +192,11 @@ export default function CandidatesPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {filteredCandidates.map((candidate) => {
             const isSelected = selectedIds.includes(candidate.candidate_id);
-            const score = computeProfileScore(candidate);
 
             return (
               <CandidateCard
                 key={candidate.candidate_id}
                 candidate={candidate}
-                score={score}
                 selected={isSelected}
                 onSelect={() => toggleSelect(candidate.candidate_id)}
                 onView={() => setActiveCandidate(candidate)}

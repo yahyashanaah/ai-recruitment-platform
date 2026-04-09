@@ -28,6 +28,7 @@ def main() -> None:
         "/api/v1/jd/generate",
         "/api/v1/candidates",
         "/api/v1/candidates/{candidate_id}",
+        "/api/v1/dashboard/summary",
         "/api/v1/documents/file/{file_name}",
     }
     actual_paths = set(openapi["paths"].keys())

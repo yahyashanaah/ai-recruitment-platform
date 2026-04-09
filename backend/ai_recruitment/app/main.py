@@ -9,15 +9,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from langchain_openai import ChatOpenAI
 
-from app.api import auth, candidates, chat, chunks, documents, matching
+from app.api import auth, candidates, chat, chunks, dashboard_routes, documents, matching
 from app.auth.service import AuthService
 from app.core.config import Settings, get_settings
 from app.db.client import SupabaseClientFactory
+from app.db.pg_client import DirectPostgresPool
+from app.repositories.activity_repository import RecruiterActivityRepository
 from app.repositories.candidates import CandidateRepository
+from app.repositories.candidate_vector_search_repository import CandidateVectorSearchRepository
 from app.repositories.chunks import ChunkRepository
+from app.repositories.dashboard_repository import DashboardRepository
 from app.repositories.recruiters import RecruiterRepository
 from app.services.candidate_service import CandidateService
 from app.services.chunk_service import ChunkService
+from app.services.dashboard_service import DashboardService
 from app.services.embedding_service import EmbeddingService
 from app.services.ingestion_service import IngestionService
 from app.services.matching_service import MatchingService
@@ -29,16 +34,51 @@ if sys.platform.startswith("win") and hasattr(asyncio, "WindowsSelectorEventLoop
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
+def _install_windows_connection_reset_filter() -> None:
+    """Suppress noisy Windows transport reset callbacks caused by client disconnects."""
+    if not sys.platform.startswith("win"):
+        return
+
+    loop = asyncio.get_running_loop()
+    default_handler = loop.get_exception_handler()
+
+    def handler(current_loop: asyncio.AbstractEventLoop, context: dict[str, object]) -> None:
+        exception = context.get("exception")
+        handle = context.get("handle")
+        if (
+            isinstance(exception, ConnectionResetError)
+            and getattr(exception, "winerror", None) == 10054
+            and handle is not None
+            and "_call_connection_lost" in repr(handle)
+        ):
+            return
+
+        if default_handler is not None:
+            default_handler(current_loop, context)
+        else:
+            current_loop.default_exception_handler(context)
+
+    loop.set_exception_handler(handler)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize and wire application dependencies."""
     settings = get_settings()
     settings.validate_runtime_dependencies()
+    _install_windows_connection_reset_filter()
 
     client_factory = SupabaseClientFactory(settings)
+    direct_pg_pool = DirectPostgresPool(settings)
+    if direct_pg_pool.enabled:
+        await direct_pg_pool.open()
+
     recruiter_repository = RecruiterRepository(client_factory)
+    activity_repository = RecruiterActivityRepository(client_factory)
     candidate_repository = CandidateRepository(client_factory)
     chunk_repository = ChunkRepository(client_factory)
+    vector_search_repository = CandidateVectorSearchRepository(direct_pg_pool)
+    dashboard_repository = DashboardRepository(direct_pg_pool)
 
     api_key = settings.openai_api_key or None
     embedding_service = EmbeddingService(model_name=settings.embedding_model)
@@ -65,7 +105,9 @@ async def lifespan(app: FastAPI):
     candidate_service = CandidateService(
         candidate_repository=candidate_repository,
         chunk_repository=chunk_repository,
+        vector_search_repository=vector_search_repository,
         embedding_service=embedding_service,
+        search_cache_ttl_seconds=settings.search_cache_ttl_seconds,
     )
     chunk_service = ChunkService(
         chunk_repository=chunk_repository,
@@ -82,15 +124,23 @@ async def lifespan(app: FastAPI):
         chat_model=rag_model,
         chunk_repository=chunk_repository,
         embedding_service=embedding_service,
+        activity_repository=activity_repository,
         default_top_k=settings.rag_top_k,
     )
     matching_service = MatchingService(
         candidate_repository=candidate_repository,
         chunk_repository=chunk_repository,
+        vector_search_repository=vector_search_repository,
         jd_parser_model=jd_parser_model,
         embedding_service=embedding_service,
         scoring_service=scoring_service,
+        activity_repository=activity_repository,
         retrieval_k=settings.match_retrieval_k,
+    )
+    dashboard_service = DashboardService(
+        dashboard_repository=dashboard_repository,
+        candidate_repository=candidate_repository,
+        cache_ttl_seconds=settings.dashboard_cache_ttl_seconds,
     )
 
     app.state.auth_service = auth_service
@@ -99,9 +149,12 @@ async def lifespan(app: FastAPI):
     app.state.ingestion_service = ingestion_service
     app.state.rag_service = rag_service
     app.state.matching_service = matching_service
+    app.state.dashboard_service = dashboard_service
     app.state.streaming_service = StreamingService()
 
     yield
+
+    await direct_pg_pool.close()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -128,6 +181,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(matching.router, prefix=_settings.api_prefix)
     app.include_router(candidates.router, prefix=_settings.api_prefix)
     app.include_router(chunks.router, prefix=_settings.api_prefix)
+    app.include_router(dashboard_routes.router, prefix=_settings.api_prefix)
 
     @app.get("/health", tags=["Health"])
     def health() -> dict[str, str]:

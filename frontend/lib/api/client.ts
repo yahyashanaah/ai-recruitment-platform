@@ -3,6 +3,7 @@ import type {
   ChatAskPayload,
   ChatSource,
   ChatStreamHandlers,
+  DashboardSummaryResponse,
   DeleteCandidateResponse,
   DeleteFileResponse,
   HealthResponse,
@@ -211,6 +212,17 @@ export async function listCandidates(accessToken?: string) {
     accessToken
   );
   return parseJSON<CandidateProfile[]>(response);
+}
+
+export async function getDashboardSummary(accessToken?: string) {
+  const response = await authenticatedFetch(
+    "/api/v1/dashboard/summary",
+    {
+      cache: "no-store"
+    },
+    accessToken
+  );
+  return parseJSON<DashboardSummaryResponse>(response);
 }
 
 export async function deleteCandidate(candidateId: string, accessToken?: string) {

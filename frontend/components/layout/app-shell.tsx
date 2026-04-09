@@ -125,6 +125,11 @@ export function AppShell({ children }: AppShellProps) {
       await signOut();
       router.replace("/login");
       router.refresh();
+      if (typeof window !== "undefined") {
+        window.setTimeout(() => {
+          window.location.replace("/login");
+        }, 0);
+      }
     } finally {
       setSigningOut(false);
     }

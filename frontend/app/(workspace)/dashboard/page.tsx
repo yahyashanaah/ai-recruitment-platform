@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -9,7 +9,7 @@ import {
   MessageSquareText,
   Sparkles,
   UsersRound,
-  WandSparkles
+  WandSparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,9 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isAuthenticationRequiredError, listCandidates } from "@/lib/api/client";
-import type { CandidateProfile } from "@/lib/api/types";
-import { useStoredNumber } from "@/lib/storage";
+import { getDashboardSummary, isAuthenticationRequiredError } from "@/lib/api/client";
+import type { DashboardActivity, DashboardSummaryResponse } from "@/lib/api/types";
 import { formatDate } from "@/lib/utils";
 
 const quickActions = [
@@ -30,34 +29,68 @@ const quickActions = [
     href: "/intake",
     title: "Upload CVs",
     description: "Add resume files and create structured candidate records.",
-    icon: FileStack
+    icon: FileStack,
   },
   {
     href: "/match",
     title: "Start a new match",
     description: "Paste a job description and compare the strongest candidates.",
-    icon: BriefcaseBusiness
+    icon: BriefcaseBusiness,
   },
   {
     href: "/generate",
     title: "Generate a JD",
     description: "Turn a short hiring brief into a structured job description.",
-    icon: WandSparkles
-  }
+    icon: WandSparkles,
+  },
 ];
+
+function describeActivity(activity: DashboardActivity | null) {
+  if (!activity) {
+    return {
+      title: "No recent activity yet",
+      detail: "Recent recruiter actions and uploads will appear here once the workspace is in use.",
+    };
+  }
+
+  if (activity.activity_type === "upload") {
+    return {
+      title: activity.candidate_name || "Candidate uploaded",
+      detail: activity.file_name
+        ? `Uploaded from ${activity.file_name}`
+        : activity.detail || "Candidate uploaded",
+    };
+  }
+
+  if (activity.activity_type === "chat") {
+    return {
+      title: "AI chat activity",
+      detail: activity.detail || "A recruiter question was sent to the AI assistant.",
+    };
+  }
+
+  if (activity.activity_type === "match") {
+    return {
+      title: "JD matching activity",
+      detail: activity.detail || "A recruiter ran candidate matching for a job description.",
+    };
+  }
+
+  return {
+    title: "Workspace activity",
+    detail: activity.detail || "Recent recruiter activity is available.",
+  };
+}
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
-  const chatQueries = useStoredNumber("tc_chat_queries_used");
-  const matchRuns = useStoredNumber("tc_match_runs");
-  const generatedJds = useStoredNumber("tc_generated_jds");
+  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
 
   useEffect(() => {
     const run = async () => {
       try {
-        const response = await listCandidates();
-        setCandidates(response);
+        const response = await getDashboardSummary();
+        setSummary(response);
       } catch (error) {
         if (isAuthenticationRequiredError(error)) {
           return;
@@ -71,41 +104,39 @@ export default function DashboardPage() {
     void run();
   }, []);
 
-  const uploadedFiles = useMemo(() => new Set(candidates.map((candidate) => candidate.file_name)).size, [candidates]);
-
-  const activity = useMemo(
-    () =>
-      [...candidates]
-        .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
-        .slice(0, 5),
-    [candidates]
-  );
+  const totalCandidates = summary?.total_candidates ?? 0;
+  const uploadsThisMonth = summary?.uploads_this_month ?? 0;
+  const chatQueries = summary?.chat_queries_this_month ?? 0;
+  const matchRuns = summary?.match_runs_this_month ?? 0;
+  const recentCandidates = summary?.recent_candidates ?? [];
+  const recentActivity = summary?.recent_activity ?? [];
+  const latestActivity = describeActivity(recentActivity[0] ?? null);
 
   const stats = [
     {
       label: "Candidates",
-      value: candidates.length,
+      value: totalCandidates,
       hint: "Profiles currently available in your workspace.",
-      icon: UsersRound
+      icon: UsersRound,
     },
     {
-      label: "Uploaded files",
-      value: uploadedFiles,
-      hint: "Source documents grouped by file name.",
-      icon: FileStack
+      label: "Uploads this month",
+      value: uploadsThisMonth,
+      hint: "Candidate profiles created during the current month.",
+      icon: FileStack,
     },
     {
-      label: "AI chats",
+      label: "AI chats this month",
       value: chatQueries,
-      hint: "Questions asked from this browser session.",
-      icon: MessageSquareText
+      hint: "Recruiter questions sent to the AI assistant this month.",
+      icon: MessageSquareText,
     },
     {
-      label: "JD runs",
-      value: matchRuns + generatedJds,
-      hint: "Matching and Smart JD actions triggered here.",
-      icon: Sparkles
-    }
+      label: "JD matches this month",
+      value: matchRuns,
+      hint: "Matching runs triggered from the recruiter workspace.",
+      icon: Sparkles,
+    },
   ];
 
   return (
@@ -136,23 +167,19 @@ export default function DashboardPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-[24px] border border-orange-100 bg-white/90 p-5 shadow-[0_18px_40px_rgba(251,146,60,0.08)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Focus now</p>
-              <p className="mt-3 text-lg font-semibold text-slate-950">{uploadedFiles > 0 ? "Continue candidate review" : "Start document intake"}</p>
+              <p className="mt-3 text-lg font-semibold text-slate-950">
+                {totalCandidates > 0 ? "Continue candidate review" : "Start document intake"}
+              </p>
               <p className="mt-2 text-sm leading-7 text-slate-600">
-                {uploadedFiles > 0
-                  ? "Your recruiter workspace already has uploaded candidate data ready for chat and matching."
+                {totalCandidates > 0
+                  ? "Your recruiter workspace already has candidate data ready for chat and matching."
                   : "Upload your first resume files to activate chat, candidate review, and JD matching."}
               </p>
             </div>
             <div className="rounded-[24px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Latest signal</p>
-              <p className="mt-3 text-lg font-semibold text-slate-950">
-                {activity[0]?.name ?? "No candidate activity yet"}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                {activity[0]
-                  ? `${activity[0].current_position || "Candidate profile"} from ${activity[0].file_name}`
-                  : "Recent upload activity will appear here once your workspace has candidates."}
-              </p>
+              <p className="mt-3 text-lg font-semibold text-slate-950">{latestActivity.title}</p>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{latestActivity.detail}</p>
             </div>
           </div>
         </CardContent>
@@ -186,7 +213,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent candidate activity</CardTitle>
-            <CardDescription>Profiles created in your recruiter workspace.</CardDescription>
+            <CardDescription>Profiles and recruiter actions from your workspace.</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -195,7 +222,7 @@ export default function DashboardPage() {
                   <Skeleton key={index} className="h-24 rounded-[22px]" />
                 ))}
               </div>
-            ) : activity.length === 0 ? (
+            ) : recentActivity.length === 0 && recentCandidates.length === 0 ? (
               <EmptyState
                 icon={UsersRound}
                 title="No candidate activity yet"
@@ -203,27 +230,30 @@ export default function DashboardPage() {
               />
             ) : (
               <div className="grid gap-3">
-                {activity.map((candidate) => (
+                {(recentActivity.length > 0
+                  ? recentActivity
+                  : recentCandidates.map((candidate) => ({
+                      activity_type: "upload",
+                      occurred_at: candidate.created_at,
+                      candidate_id: candidate.candidate_id,
+                      candidate_name: candidate.name,
+                      file_name: candidate.file_name,
+                      detail: "Candidate uploaded",
+                    }))).map((activity, index) => (
                   <div
-                    key={candidate.candidate_id}
+                    key={`${activity.activity_type}-${activity.candidate_id ?? "activity"}-${activity.occurred_at ?? index}`}
                     className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.04)]"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-base font-semibold text-slate-950">{candidate.name}</p>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {candidate.current_position || "Candidate profile"} {candidate.location ? `• ${candidate.location}` : ""}
+                        <p className="text-base font-semibold text-slate-950">
+                          {describeActivity(activity).title}
                         </p>
+                        <p className="mt-1 text-sm text-slate-500">{describeActivity(activity).detail}</p>
                       </div>
-                      <Badge variant="secondary">{formatDate(candidate.created_at ?? Date.now())}</Badge>
-                    </div>
-                    <p className="mt-4 text-sm leading-7 text-slate-600">Source file: {candidate.file_name}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {candidate.skills.slice(0, 4).map((skill) => (
-                        <Badge key={skill} variant="outline" className="normal-case tracking-normal">
-                          {skill}
-                        </Badge>
-                      ))}
+                      <Badge variant="secondary">
+                        {formatDate(activity.occurred_at ?? Date.now())}
+                      </Badge>
                     </div>
                   </div>
                 ))}
@@ -268,9 +298,9 @@ export default function DashboardPage() {
               <CardDescription>Current activity against Growth plan limits.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <UsageMeter label="CV uploads" used={uploadedFiles} total={300} />
+              <UsageMeter label="CV uploads" used={uploadsThisMonth} total={300} />
               <UsageMeter label="AI chats" used={chatQueries} total={1000} />
-              <UsageMeter label="Smart JD runs" used={generatedJds} total={20} />
+              <UsageMeter label="JD matches" used={matchRuns} total={100} />
             </CardContent>
           </Card>
         </div>

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     openai_chat_model: str = Field(default="gpt-4o", alias="OPENAI_CHAT_MODEL")
     supabase_url: str = Field(default="", alias="SUPABASE_URL")
     supabase_service_role_key: str = Field(default="", alias="SUPABASE_SERVICE_ROLE_KEY")
+    supabase_db_url: str = Field(default="", alias="SUPABASE_DB_URL")
     embedding_model: str = Field(
         default="sentence-transformers/all-MiniLM-L6-v2",
         validation_alias=AliasChoices("EMBEDDING_MODEL", "OPENAI_EMBEDDING_MODEL"),
@@ -32,6 +33,10 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=120, alias="CHUNK_OVERLAP")
     rag_top_k: int = Field(default=5, alias="RAG_TOP_K")
     match_retrieval_k: int = Field(default=50, alias="MATCH_RETRIEVAL_K")
+    search_cache_ttl_seconds: int = Field(default=180, alias="SEARCH_CACHE_TTL_SECONDS")
+    dashboard_cache_ttl_seconds: int = Field(default=60, alias="DASHBOARD_CACHE_TTL_SECONDS")
+    pg_pool_min_size: int = Field(default=1, alias="PG_POOL_MIN_SIZE")
+    pg_pool_max_size: int = Field(default=10, alias="PG_POOL_MAX_SIZE")
 
     cors_allow_origins: list[str] = Field(default_factory=lambda: ["*"])
 

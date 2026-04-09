@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -7,6 +8,7 @@ from langchain_openai import ChatOpenAI
 
 from app.auth.service import AuthenticatedRecruiter
 from app.prompts.rag_prompt import build_rag_prompt
+from app.repositories.activity_repository import RecruiterActivityRepository
 from app.repositories.chunks import ChunkRepository
 from app.services.embedding_service import EmbeddingService
 
@@ -21,11 +23,13 @@ class RAGService:
         chat_model: ChatOpenAI,
         chunk_repository: ChunkRepository,
         embedding_service: EmbeddingService,
+        activity_repository: RecruiterActivityRepository | None = None,
         default_top_k: int = 5,
     ) -> None:
         self._chat_model = chat_model
         self._chunk_repository = chunk_repository
         self._embedding_service = embedding_service
+        self._activity_repository = activity_repository
         self._default_top_k = default_top_k
 
     async def stream_answer(
@@ -35,11 +39,18 @@ class RAGService:
         top_k: int | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         retrieval_k = top_k or self._default_top_k
-        matches = self._chunk_repository.search_chunks(
+        query_embedding = await self._embedding_service.embed_query_async(question)
+        matches = await asyncio.to_thread(
+            self._chunk_repository.search_chunks,
             access_token=recruiter.access_token,
             recruiter_id=recruiter.id,
-            query_embedding=self._embedding_service.embed_query(question),
+            query_embedding=query_embedding,
             limit=retrieval_k,
+        )
+        await self._record_activity(
+            recruiter=recruiter,
+            activity_type="chat",
+            metadata={"detail": "Asked AI recruiter chat"},
         )
 
         if not matches:
@@ -118,3 +129,23 @@ class RAGService:
 
         return sources
 
+    async def _record_activity(
+        self,
+        *,
+        recruiter: AuthenticatedRecruiter,
+        activity_type: str,
+        metadata: dict[str, object],
+    ) -> None:
+        if self._activity_repository is None:
+            return
+
+        try:
+            await asyncio.to_thread(
+                self._activity_repository.create_activity,
+                access_token=recruiter.access_token,
+                recruiter_id=recruiter.id,
+                activity_type=activity_type,
+                metadata=metadata,
+            )
+        except Exception:
+            return

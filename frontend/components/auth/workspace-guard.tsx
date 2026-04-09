@@ -15,8 +15,14 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !session) {
-      router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
+      const destination = `/login?next=${encodeURIComponent(nextPath)}`;
+      router.replace(destination);
       router.refresh();
+      if (typeof window !== "undefined") {
+        window.setTimeout(() => {
+          window.location.replace(destination);
+        }, 0);
+      }
     }
   }, [loading, nextPath, router, session]);
 

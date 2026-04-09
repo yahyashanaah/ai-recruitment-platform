@@ -144,6 +144,33 @@ export interface DeleteFileResponse {
   deleted_chunks: number;
 }
 
+export interface DashboardRecentCandidate {
+  candidate_id: string;
+  name: string;
+  file_name: string;
+  current_position: string;
+  location: string;
+  created_at?: string | null;
+}
+
+export interface DashboardActivity {
+  activity_type: string;
+  occurred_at?: string | null;
+  candidate_id?: string | null;
+  candidate_name: string;
+  file_name: string;
+  detail: string;
+}
+
+export interface DashboardSummaryResponse {
+  total_candidates: number;
+  uploads_this_month: number;
+  match_runs_this_month: number;
+  chat_queries_this_month: number;
+  recent_candidates: DashboardRecentCandidate[];
+  recent_activity: DashboardActivity[];
+}
+
 export interface HealthResponse {
   status: string;
 }
