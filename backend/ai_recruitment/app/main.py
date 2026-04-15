@@ -185,7 +185,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/health", tags=["Health"])
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        return {"status": "ok this is a health check endpoint"}
 
     def custom_openapi() -> dict:
         if app.openapi_schema:
